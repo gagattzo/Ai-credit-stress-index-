@@ -1,7 +1,9 @@
 // GET /api/cds
 // Daily 5-year CDS levels for Oracle, CoreWeave and Meta, computed from single-name CDS trades that dealers must report and
 // that DTCC publishes free of charge under the SEC's security-based swap rules (Regulation SBSR public dissemination).
-// Source files: https://pddata.dtcc.com/ppd/api/report/cumulative/sec/SEC_CUMULATIVE_CREDITS_YYYY_MM_DD.zip
+// Source files: https://pddata.dtcc.com/ppd/api/report/cumulative/sec/SEC_CUMULATIVE_CREDITS_YYYY_MM_DD.zip (end of day)
+// and, for days whose end-of-day file is not out yet, the intraday files
+// https://pddata.dtcc.com/ppd/api/report/intraday/sec/SEC_SLICE_CREDITS_YYYY_MM_DD_N.zip (N = 1, 2, ... a few per minute).
 // Method: see `method` in the response. Trades are cleaned (EROR removed, CORR applied, same-day execution only) and
 // restricted to the on-the-run 5-year maturity; the daily level is the median across that day's trades.
 
@@ -10,6 +12,8 @@ const zlib = require('zlib');
 const TIMEOUT_MS = 12000;
 const UA = 'ACSI/0.3 (AI Credit Stress Index; +https://github.com/gagattzo/ai-credit-stress-index-)';
 const DAYS_BACK = 12;
+const SLICE_WAVE = 40;   // intraday files fetched in parallel per wave
+const SLICE_MAX = 8000;  // hard stop
 const ENTITIES = [
   { id: 'ORCL', name: 'Oracle', match: 'ORACLE', red: '6EC42L' },
   { id: 'CRWV', name: 'CoreWeave', match: 'COREWEAVE', red: '239FAV' },
@@ -201,6 +205,25 @@ function levelsForDay(rawRows, fileDate, prev) {
   return out;
 }
 
+// All intraday files published so far for one day, concatenated. Files are numbered from 1 with no gaps;
+// a wave whose last file is missing is the end. Returns null if there are none.
+async function intradayFor(iso) {
+  const stem = `https://pddata.dtcc.com/ppd/api/report/intraday/sec/SEC_SLICE_CREDITS_${iso.replace(/-/g, '_')}_`;
+  const rows = [];
+  let n = 1, count = 0;
+  while (n <= SLICE_MAX) {
+    const batch = await Promise.all(Array.from({ length: SLICE_WAVE }, (_, i) => n + i).map(async (k) => {
+      const buf = await getBuffer(stem + k + '.zip');
+      if (!buf) return null;
+      try { return parseCSV(unzipFirst(buf).toString('utf8')); } catch (e) { return null; }
+    }));
+    batch.forEach((b) => { if (b) { count += 1; rows.push(...b); } });
+    if (!batch[batch.length - 1]) break;
+    n += SLICE_WAVE;
+  }
+  return count ? { rows, slices: count } : null;
+}
+
 module.exports = async (req, res) => {
   const today = new Date();
   const days = [];
@@ -209,35 +232,46 @@ module.exports = async (req, res) => {
     if (d.getUTCDay() === 0 || d.getUTCDay() === 6) continue;
     days.push(d.toISOString().slice(0, 10));
   }
-  const files = await Promise.all(days.map(async (iso) => {
-    const name = `SEC_CUMULATIVE_CREDITS_${iso.replace(/-/g, '_')}.zip`;
-    const buf = await getBuffer(`https://pddata.dtcc.com/ppd/api/report/cumulative/sec/${name}`);
-    if (!buf) return null;
-    try { return { date: iso, rows: parseCSV(unzipFirst(buf).toString('utf8')) }; } catch (e) { return null; }
-  }));
+  const recent = days.slice(0, 2); // the two latest weekdays may not have an end-of-day file yet
+  const intraday = {};
+  const [files] = await Promise.all([
+    Promise.all(days.map(async (iso) => {
+      const name = `SEC_CUMULATIVE_CREDITS_${iso.replace(/-/g, '_')}.zip`;
+      const buf = await getBuffer(`https://pddata.dtcc.com/ppd/api/report/cumulative/sec/${name}`);
+      if (!buf) return null;
+      try { return { date: iso, rows: parseCSV(unzipFirst(buf).toString('utf8')) }; } catch (e) { return null; }
+    })),
+    Promise.all(recent.map(async (iso) => { intraday[iso] = await intradayFor(iso); })),
+  ]);
+  recent.forEach((iso) => {
+    const i = days.indexOf(iso);
+    if (!files[i] && intraday[iso]) files[i] = { date: iso, rows: intraday[iso].rows, intraday: true, slices: intraday[iso].slices };
+  });
   const got = [];
   let prev = null;
   files.filter(Boolean).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((f) => {
     const levels = levelsForDay(f.rows, f.date, prev);
-    got.push({ date: f.date, levels });
+    got.push({ date: f.date, levels, intraday: !!f.intraday, slices: f.slices || null });
     prev = Object.assign({}, prev || {}, ...ENTITIES.filter((e) => levels[e.id]).map((e) => ({ [e.id]: levels[e.id] })));
   });
   const entities = ENTITIES.map((e) => {
-    const series = got.filter((f) => f.levels[e.id]).map((f) => ({ date: f.date, bp: f.levels[e.id].bp, trades: f.levels[e.id].trades }));
+    const series = got.filter((f) => f.levels[e.id]).map((f) => Object.assign({ date: f.date, bp: f.levels[e.id].bp, trades: f.levels[e.id].trades }, f.intraday ? { intraday: true } : {}));
     const latest = series[series.length - 1] || null;
     const lastFile = got.filter((f) => f.levels[e.id]).pop();
     return { id: e.id, name: e.name, red: e.red, tenor: '5Y', latest, last_trade: lastFile ? lastFile.levels[e.id].last_trade : null, series };
   });
   res.setHeader('content-type', 'application/json; charset=utf-8');
-  res.setHeader('cache-control', got.length ? 'public, s-maxage=1800, stale-while-revalidate=86400' : 'public, s-maxage=120');
+  const anyIntraday = got.some((f) => f.intraday);
+  res.setHeader('cache-control', !got.length ? 'public, s-maxage=120' : anyIntraday ? 'public, s-maxage=300, stale-while-revalidate=86400' : 'public, s-maxage=1800, stale-while-revalidate=86400');
   res.setHeader('access-control-allow-origin', '*');
   res.status(200).send(JSON.stringify({
     updated: new Date().toISOString(),
     source: 'DTCC Data Repository (U.S.) LLC, SEC public dissemination of security-based swaps',
     source_url: 'https://pddata.dtcc.com/ppd/secdashboard',
     files: got.map((f) => f.date),
-    calibration: (() => { const c = got.length ? got[got.length - 1].levels._calibration : null; return c ? Object.assign({ date: got[got.length - 1].date }, c) : null; })(),
+    intraday: got.filter((f) => f.intraday).map((f) => ({ date: f.date, files: f.slices })),
+    calibration: (() => { const full = got.filter((f) => !f.intraday && f.levels._calibration); const f = full[full.length - 1]; return f ? Object.assign({ date: f.date }, f.levels._calibration) : null; })(),
     entities,
-    method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront prices converted with a flat-hazard model (40% recovery).',
+    method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront prices converted with a flat-hazard model (40% recovery). Days marked intraday use the trades published so far that day.',
   }));
 };
