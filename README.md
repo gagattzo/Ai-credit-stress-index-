@@ -1,5 +1,7 @@
 # AI Credit Stress Index (ACSI)
 
+Live at **https://aistress.si** (also served at ai-credit-stress-index.vercel.app).
+
 This repo holds the static site for the AI Credit Stress Index, a weekly reading of where the stress in AI infrastructure sits: in the debt that financed the build-out, or in what the GPUs earn.
 
 ## What's in it

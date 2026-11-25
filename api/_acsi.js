@@ -85,7 +85,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 function baseUrl(req) {
   if (process.env.ACSI_BASE) return process.env.ACSI_BASE.replace(/\/$/, '');
-  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'ai-credit-stress-index.vercel.app').split(',')[0].trim();
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'aistress.si').split(',')[0].trim();
   return (/^(localhost|127\.)/.test(host) ? 'http://' : 'https://') + host;
 }
 

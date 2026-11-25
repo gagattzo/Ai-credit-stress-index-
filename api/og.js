@@ -75,7 +75,7 @@ function card(I, live) {
         h('div', { width: 40, height: 40, borderRadius: 10, backgroundColor: C.card, border: '1px solid ' + C.line2, alignItems: 'center', justifyContent: 'center' }, logo),
         h('div', mono(22, C.fg, 600, { marginLeft: 14, letterSpacing: 2 }), 'ACSI'),
         h('div', mono(18, C.dim, 400, { marginLeft: 14, letterSpacing: 2 }), 'AI CREDIT STRESS INDEX')),
-      h('div', mono(18, C.muted, 400), 'ai-credit-stress-index.vercel.app')),
+      h('div', mono(18, C.muted, 400), 'aistress.si')),
     h('div', { width: 1080, flexGrow: 1, marginTop: 24 },
       h('div', { flexDirection: 'column', width: 562, justifyContent: 'center' },
         h('div', mono(18, C.muted, 400, { letterSpacing: 2 }), 'STRESS GAP · WEEKLY · ' + longDate(I.asOf)),
