@@ -1705,7 +1705,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       j.trades.slice(0, 14).forEach(function (x) {
         var fresh = !first && !seen[x.id];
         var r = el('div', 'sw' + (x.ai ? ' ai' : '') + (x.index_name ? ' idx' : '') + (/^(ISIN|RED) /.test(x.entity) ? ' anon' : '') + (fresh ? ' new' : ''));
-        r.appendChild(el('span', 'tm', d3.utcFormat('%H:%M:%S')(new Date(x.executed))));
+        var ex = new Date(x.executed), today = new Date().toISOString().slice(0, 10) === String(x.executed).slice(0, 10);
+        r.appendChild(el('span', 'tm', today ? d3.utcFormat('%H:%M:%S')(ex) : d3.utcFormat('%-d %b %H:%M')(ex).toUpperCase()));
         var en = el('span', 'ent', x.entity); if (x.ai) en.appendChild(el('span', 'tag', x.index_name ? 'INDEX' : 'AI')); r.appendChild(en);
         r.appendChild(el('span', null, tenor(x.tenor_y)));
         r.appendChild(el('span', 'sz', x.size));
