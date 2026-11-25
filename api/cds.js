@@ -176,7 +176,7 @@ function levelsForDay(rawRows, fileDate, prev) {
       const pct = N > 0 && Number.isFinite(amt) ? amt / N : null;
       if (r['Spread-Leg 1']) {
         const q = Number(r['Spread-Leg 1']);
-        if (q > 0 && q < 1) {
+        if (q >= 0.001 && q < 0.5) { // 10 to 5,000 bp; anything else in this field is a price or mis-scaled
           quoted.push({ s: q, exec });
           // Calibration: trades that report both a quoted spread and an upfront (coupon inferred as 1% or 5%).
           if (pct !== null && pct > 0) {
@@ -275,3 +275,6 @@ module.exports = async (req, res) => {
     method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront prices converted with a flat-hazard model (40% recovery). Days marked intraday use the trades published so far that day.',
   }));
 };
+
+// Shared with /api/tape (not a route).
+module.exports.model = { spreadFromUpfront, lastIMM, onTheRun5Y };

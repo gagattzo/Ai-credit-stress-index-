@@ -146,6 +146,36 @@ h1 { font-size: clamp(36px, 6.4vw, 64px); line-height: 1.02; letter-spacing: -.0
 @keyframes pulse { from { transform: scale(1); opacity: .55; } to { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .halo { animation: none; opacity: .25; } }
 
+/* live feel: clock, pings, refresh bars, tick flashes, swap tape */
+.nav-clock { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nav-clock b { color: var(--green); font-weight: 600; }
+@media (max-width: 560px) { .nav-clock .z, .nav-clock b { display: none; } .nav .btn { padding: 9px 12px; font-size: 13px; } }
+@media (max-width: 360px) { .nav-clock { display: none !important; } }
+.ping { transform-box: fill-box; transform-origin: center; animation: ping 1.8s ease-out infinite; }
+@keyframes ping { from { transform: scale(1); opacity: .6; } to { transform: scale(3.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ping { animation: none; opacity: 0; } }
+.refresh { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--dim); letter-spacing: .06em; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.refresh .bar { flex: 1; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.refresh .bar i { display: block; height: 100%; width: 0; background: var(--green); opacity: .7; transition: width 1s linear; }
+.fl-up { animation: flup 1.4s ease-out; } @keyframes flup { from { background: rgba(69,176,140,.32); color: var(--green); } to { background: transparent; } }
+.fl-dn { animation: fldn 1.4s ease-out; } @keyframes fldn { from { background: rgba(229,83,75,.32); color: var(--red); } to { background: transparent; } }
+.hl .px, .pc .v { border-radius: 4px; }
+.sw { display: grid; grid-template-columns: 70px minmax(0, 1fr) 50px 62px 140px 70px; gap: 10px; align-items: baseline; padding: 7px 4px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sw.head { color: var(--dim); font-size: 10px; letter-spacing: .07em; border-top: 0; padding-bottom: 4px; }
+.sw .tm { color: var(--dim); }
+.sw .ent { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw.ai .ent { color: var(--fg); font-weight: 600; }
+.sw.idx .ent { color: var(--orange); }
+.sw .tag { font-size: 9px; letter-spacing: .08em; color: var(--dim); border: 1px solid var(--line2); border-radius: 4px; padding: 0 4px; margin-left: 6px; font-weight: 400; vertical-align: 1px; }
+.sw .pr { text-align: right; color: var(--fg2); }
+.sw.ai .pr { color: var(--fg); font-weight: 600; }
+.sw .ago { text-align: right; color: var(--dim); white-space: nowrap; }
+.sw.anon .ent { color: var(--dim); }
+.sw.new { animation: swin 3s ease-out; }
+@keyframes swin { from { background: rgba(216,160,61,.2); transform: translateY(-4px); } 30% { transform: none; } to { background: transparent; } }
+@media (max-width: 640px) { .sw { grid-template-columns: 52px minmax(0, 1fr) 36px 100px; gap: 8px; font-size: 11.5px; } .sw .sz, .sw .ago, .sw .tag { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sw.new, .fl-up, .fl-dn { animation: none; } }
+
 /* live strip beside the gap, share bar */
 .sharebar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
 .btn-x { appearance: none; border: 0; border-radius: 9px; background: var(--fg); color: #09090a; font: 600 13px var(--sans); padding: 8px 14px; cursor: pointer; }
@@ -237,9 +267,9 @@ h1 { font-size: clamp(36px, 6.4vw, 64px); line-height: 1.02; letter-spacing: -.0
 .hl .px { font-family: var(--mono); text-align: right; font-size: 14px; color: var(--fg); }
 .hl .ch { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-family: var(--mono); font-weight: 600; font-size: 14px; }
 .hl .ch i { display: block; height: 8px; border-radius: 2px; }
-@media (max-width: 560px) { .hl { grid-template-columns: 56px minmax(0, 1fr) 110px; } .hl .px { display: none; } }
+@media (max-width: 560px) { .hl { grid-template-columns: 56px minmax(0, 1fr) 118px; } .hl .nm { display: none; } }
 
-.cds { display: grid; grid-template-columns: 120px 130px minmax(0, 1fr) 230px; gap: 14px; padding: 12px 2px; border-top: 1px solid var(--line); align-items: center; }
+.cds { display: grid; grid-template-columns: 120px 130px minmax(0, 1fr) 300px; gap: 14px; padding: 12px 2px; border-top: 1px solid var(--line); align-items: center; }
 .cds b { font-size: 15px; font-weight: 600; }
 .cds .lv-bp { font-family: var(--mono); font-size: 22px; font-weight: 700; }
 .cds .meta { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
@@ -332,6 +362,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       <b>ACSI</b><small>AI CREDIT STRESS INDEX</small>
     </a>
     <nav><a href="#c-flip">The flip</a><a href="#live">Live</a><a href="#borrowers">Borrowers</a><a href="#inputs">Inputs</a><a href="#method">Method</a></nav>
+    <span class="nav-clock" id="nav-clock" hidden><i class="ldot"></i><b>LIVE</b><span id="clk">--:--:--</span><span class="z">UTC</span></span>
     <button class="btn" id="dl" type="button">Get the data</button>
   </div>
 </header>
@@ -433,8 +464,17 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       <article class="card" id="c-dtcc" hidden>
         <div class="card-head"><h3>CDS from the public swap tape</h3><span class="pill"><i class="dot"></i>DTCC · intraday</span></div>
         <p class="flip-title" style="font-size:clamp(18px,2.4vw,22px);max-width:40ch;margin-bottom:10px">Trade-level CDS, free: dealers have to report single-name CDS trades, and DTCC publishes them.</p>
+        <div class="refresh"><span id="cds-next">CHECKING THE TAPE</span><span class="bar"><i id="cds-bar"></i></span></div>
         <div id="cds-rows"></div>
         <p class="mnote" id="cds-note"></p>
+      </article>
+      <article class="card" id="c-swaps" hidden>
+        <div class="card-head"><h3>Swap tape: CDS trades as DTCC publishes them</h3><span class="pill"><i class="ldot"></i><span id="sw-pill">LIVE</span></span></div>
+        <p class="side-desc" id="sw-lead"></p>
+        <div class="refresh"><span id="sw-next">CHECKING</span><span class="bar"><i id="sw-bar"></i></span></div>
+        <div class="sw head"><span>EXEC UTC</span><span>REFERENCE ENTITY</span><span>TENOR</span><span class="sz">SIZE</span><span class="pr">PRICE</span><span class="ago">ON TAPE</span></div>
+        <div id="sw-rows"></div>
+        <p class="mnote" id="sw-note"></p>
       </article>
       <div class="g-live">
         <article class="card" id="c-poly" hidden>
@@ -454,7 +494,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
         </article>
       </div>
       <article class="card" id="c-tape" hidden>
-        <div class="card-head"><h3>24/7 tape: AI-infrastructure perps</h3><span class="pill"><i class="dot"></i>Hyperliquid</span></div>
+        <div class="card-head"><h3>24/7 tape: AI-infrastructure perps</h3><span class="pill"><i class="ldot"></i>Hyperliquid · ticking</span></div>
+        <div class="refresh"><span id="hl-next">PRICING</span><span class="bar"><i id="hl-bar"></i></span></div>
         <div id="hl-rows"></div>
         <p class="mnote" id="hl-note"></p>
       </article>
@@ -464,7 +505,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
         <div class="lv" id="lv-src"></div>
         <p class="mnote" id="lv-note">Asking and list prices on public GPU marketplaces, refreshed every few minutes. These are not contract rates and not an index input; the index uses Silicon Data's weekly H100 print.</p>
       </article>
-      <p class="mnote" style="margin:0 6px 4px">Live data is fetched by this site every couple of minutes from public APIs. None of it feeds the weekly index: these are faster, noisier markets shown next to it. Thin markets can be moved by a single trader; liquidity is shown on each card.</p>
+      <p class="mnote" style="margin:0 6px 4px">Live data is fetched by this site from public APIs: perps every few seconds, the swap tape every 20 seconds, CDS levels every 5 minutes, the rest every minute. Nothing is interpolated or simulated: a number changes only when its market prints. None of it feeds the weekly index: these are faster, noisier markets shown next to it. Thin markets can be moved by a single trader; liquidity is shown on each card.</p>
     </div>
   </section>
 
@@ -1326,6 +1367,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
 
   // ---------- live board (served by /api/live and /api/gpu on Vercel; hidden when unavailable) ----------
   var LIVE = { data: null, tick: [] };
+  var HLREF = {};
 
   // ---------- live strip beside the gap: what moved since the edition (context, not the score) ----------
   var PULSE = { at: null, prev: {} };
@@ -1346,7 +1388,10 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       cells.push({ id: 'cds-' + id, k: id + ' 5Y CDS · ' + (e.latest.intraday ? 'TODAY' : fmtShort(e.latest.date).toUpperCase()), v: f0(e.latest.bp) + ' bp', d: dd === null ? 'DTCC TAPE' : sgn(dd, f0) + ' BP' + sinceEd, s: dd === null ? null : dd > 0 ? 1 : dd < 0 ? -1 : 0 });
     });
     var hl = j && j.hyperliquid && (j.hyperliquid.rows || []).filter(function (r) { return r.symbol === 'CRWV'; })[0];
-    if (hl) cells.push({ id: 'perp', k: 'CRWV 24/7 PERP', v: '$' + Number(hl.mark).toFixed(2), d: sgn(hl.change_24h * 100, function (x) { return x.toFixed(1); }) + '% 24H', s: hl.change_24h < 0 ? 1 : hl.change_24h > 0 ? -1 : 0 });
+    if (hl) {
+      var lp = LIVE.perp && LIVE.perp.CRWV, mk = lp ? lp.mark : Number(hl.mark), chg = lp ? lp.change : hl.change_24h;
+      cells.push({ id: 'perp', k: 'CRWV 24/7 PERP · TICKING', v: '$' + mk.toFixed(2), d: sgn(chg * 100, function (x) { return x.toFixed(1); }) + '% 24H', s: chg < 0 ? 1 : chg > 0 ? -1 : 0 });
+    }
     var pd = j && j.pendle;
     if (pd && pd.premium_bp != null) {
       var p0 = (pd.premium_history || []).filter(function (x) { return x.date === ed; })[0];
@@ -1374,7 +1419,64 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var s = Math.max(0, Math.round((Date.now() - PULSE.at) / 1000));
     a.textContent = LIVE.snapshot ? d3.utcFormat('%-d %b %H:%M UTC')(new Date(PULSE.at)).toUpperCase() : s < 90 ? 'UPDATED ' + s + 'S AGO' : 'UPDATED ' + d3.utcFormat('%H:%M UTC')(new Date(PULSE.at));
   };
-  setInterval(tickAge, 1000);
+  // ---------- live chrome: UTC clock, "x ago" stamps, next-check countdowns. All true; nothing is simulated. ----------
+  var LIVEON = /^https?:/.test(location.protocol) && !/^\/e\//.test(location.pathname);
+  var NEXT = {};
+  var agoText = function (ms) {
+    var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 60) return s + 'S AGO';
+    var m = Math.floor(s / 60); if (m < 60) return m + 'M ' + String(s % 60).padStart(2, '0') + 'S AGO';
+    return Math.floor(m / 60) + 'H ' + String(m % 60).padStart(2, '0') + 'M AGO';
+  };
+  var mmss = function (ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  var tickChrome = function () {
+    var now = Date.now(), clk = $('clk');
+    if (clk) clk.textContent = d3.utcFormat('%H:%M:%S')(new Date(now));
+    document.querySelectorAll('[data-ago]').forEach(function (n) { var t = Date.parse(n.getAttribute('data-ago')); if (!isNaN(t)) { var a = agoText(t); n.textContent = n.hasAttribute('data-short') ? a.replace(' AGO', '') : a; } });
+    Object.keys(NEXT).forEach(function (k) {
+      var x = NEXT[k], txt = $(k + '-next'), bar = $(k + '-bar'), e2 = now - x.at; if (!txt) return;
+      txt.textContent = x.label + ' ' + agoText(x.at) + ' · NEXT ' + mmss(x.every - e2);
+      if (bar) bar.style.width = Math.min(100, (e2 / x.every) * 100) + '%';
+    });
+    tickAge();
+  };
+  var markCheck = function (key, every, label) { NEXT[key] = { at: Date.now(), every: every, label: label }; var b = $(key + '-bar'); if (b) { b.style.transition = 'none'; b.style.width = '0'; void b.offsetWidth; b.style.transition = ''; } tickChrome(); };
+  if (LIVEON && $('nav-clock')) $('nav-clock').hidden = false;
+  setInterval(tickChrome, 1000);
+
+  // ---------- perps tick every few seconds, straight from Hyperliquid (real mids; flashes only when a price moves) ----------
+  (function () {
+    if (!LIVEON || !window.fetch) return;
+    var busy = false, EVERY = 4000;
+    var poll = function () {
+      var syms = Object.keys(HLREF); if (busy || document.hidden || !syms.length) return;
+      var dexes = {}; syms.forEach(function (k) { dexes[HLREF[k].coin.split(':')[0]] = 1; });
+      busy = true;
+      Promise.all(Object.keys(dexes).map(function (dx) {
+        return fetch('https://api.hyperliquid.xyz/info', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'allMids', dex: dx }) })
+          .then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+      })).then(function (res) {
+        var mids = {}; res.forEach(function (o) { Object.assign(mids, o || {}); });
+        var got = false, crwv = false;
+        syms.forEach(function (sym) {
+          var h = HLREF[sym], m = Number(mids[h.coin]); if (!(m > 0)) return;
+          got = true;
+          var chg = h.prev > 0 ? m / h.prev - 1 : 0;
+          LIVE.perp = LIVE.perp || {}; LIVE.perp[sym] = { mark: m, change: chg };
+          if (m === h.mark) return;
+          var up = m > h.mark; h.mark = m; if (sym === 'CRWV') crwv = true;
+          h.px.textContent = '$' + m.toFixed(2);
+          h.px.classList.remove('fl-up', 'fl-dn'); void h.px.offsetWidth; h.px.classList.add(up ? 'fl-up' : 'fl-dn');
+          var col = chg < 0 ? C.red : C.green;
+          h.ch.style.color = col; h.bar.style.background = col; h.bar.style.width = Math.round(Math.min(1, Math.abs(chg) / (h.maxc || 0.01)) * 60) + 'px';
+          if (h.ch.lastChild && h.ch.lastChild.nodeType === 3) h.ch.lastChild.nodeValue = (chg < 0 ? '−' : '+') + (Math.abs(chg) * 100).toFixed(1) + '%';
+        });
+        if (got) markCheck('hl', EVERY, 'PRICED');
+        if (crwv) renderPulse();
+      }).then(function () { busy = false; }, function () { busy = false; });
+    };
+    setInterval(poll, EVERY);
+  })();
 
   // ---------- share: X post, copy link, card image ----------
   (function () {
@@ -1490,15 +1592,19 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     }
     var hl = j.hyperliquid;
     if (hl && hl.rows && hl.rows.length) {
+      HLREF = {};
       any = true; $('c-tape').hidden = false;
       var host = $('hl-rows'); host.replaceChildren();
       var maxc = d3.max(hl.rows, function (r) { return Math.abs(r.change_24h || 0); }) || 0.01;
       hl.rows.forEach(function (r) {
         var row = el('div', 'hl'); row.appendChild(el('span', 'sym', r.symbol)); row.appendChild(el('span', 'nm', r.name));
-        row.appendChild(el('span', 'px', '$' + Number(r.mark).toFixed(2)));
-        var c = el('span', 'ch'); var bar = el('i'); var ch = r.change_24h || 0, col = ch < 0 ? C.red : C.green;
+        var prevDay = Number(r.mark) / (1 + (r.change_24h || 0)), lp = LIVE.perp && LIVE.perp[r.symbol];
+        var mk = lp ? lp.mark : Number(r.mark);
+        var pxs = el('span', 'px', '$' + mk.toFixed(2)); row.appendChild(pxs);
+        var c = el('span', 'ch'); var bar = el('i'); var ch = lp ? lp.change : (r.change_24h || 0), col = ch < 0 ? C.red : C.green;
         bar.style.width = Math.round((Math.abs(ch) / maxc) * 60) + 'px'; bar.style.background = col; c.style.color = col;
         c.append(bar, (ch < 0 ? '−' : '+') + (Math.abs(ch) * 100).toFixed(1) + '%'); row.appendChild(c); host.appendChild(row);
+        HLREF[r.symbol] = { px: pxs, ch: c, bar: bar, prev: prevDay, mark: mk, coin: (r.venue || 'xyz') + ':' + r.symbol, maxc: maxc };
         if (r.symbol === 'CRWV') tick.push({ s: 'CRWV 24/7 PERP', v: '$' + Number(r.mark).toFixed(2), c: (ch < 0 ? '▼ ' : '▲ ') + (Math.abs(ch) * 100).toFixed(1) + '% 24H', cc: col, n: 'HYPERLIQUID' });
       });
       var hn = $('hl-note'); hn.replaceChildren();
@@ -1535,6 +1641,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1.8).attr('d', d3.line().x(function (p) { return x(p.t); }).y(function (p) { return y(p.v); }));
     var l = pts[pts.length - 1];
     svg.append('circle').attr('cx', x(l.t)).attr('cy', y(l.v)).attr('r', 3).attr('fill', color);
+    svg.append('circle').attr('class', 'ping').attr('cx', x(l.t)).attr('cy', y(l.v)).attr('r', 3).attr('fill', color);
   };
   var drawCdsSparks = function () {
     if (!CDSD) return;
@@ -1554,8 +1661,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       var v = el('span', 'lv-bp', f0(e.latest.bp) + ' bp'); v.style.color = e.latest.bp >= 1000 ? C.red : e.latest.bp >= 250 ? C.amber : C.fg2; r.appendChild(v);
       var mini = el('div', 'mini'); mini.id = 'mini-' + e.id; r.appendChild(mini);
       var prev = e.series.length > 1 ? e.series[e.series.length - 2] : null;
-      var hhmm = e.last_trade ? d3.utcFormat('%H:%M UTC')(new Date(e.last_trade)) : '';
-      var meta = el('span', 'meta', (e.latest.intraday ? 'TODAY SO FAR' + (hhmm ? ' · LAST ' + hhmm : '') : fmtShort(e.latest.date).toUpperCase()) + ' · ' + e.latest.trades + (e.latest.trades === 1 ? ' TRADE' : ' TRADES') + (prev ? ' · ' + (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) + ' VS ' + fmtShort(prev.date).toUpperCase() : ''));
+      var meta = el('span', 'meta', (e.latest.intraday ? 'TODAY' : fmtShort(e.latest.date).toUpperCase()) + ' · ' + e.latest.trades + (e.latest.trades === 1 ? ' TRADE' : ' TRADES') + (prev ? ' · ' + (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) + ' VS ' + fmtShort(prev.date).toUpperCase() : ''));
+      if (e.last_trade) { meta.appendChild(el('br')); meta.append('LAST TRADE ' + d3.utcFormat('%H:%M UTC')(new Date(e.last_trade)) + ' · '); var ag = el('span'); ag.setAttribute('data-ago', e.last_trade); meta.appendChild(ag); }
       r.appendChild(meta); host.appendChild(r);
       if (e.id === 'ORCL' || e.id === 'CRWV') LIVE.cdsTick = (LIVE.cdsTick || []).filter(function (t) { return t.id !== e.id; }).concat([{ id: e.id, s: (e.id === 'ORCL' ? 'ORCL' : 'CRWV') + ' 5Y CDS · DTCC TAPE', v: f0(e.latest.bp) + ' bp', c: prev ? (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) : null, cc: prev && e.latest.bp >= prev.bp ? C.red : C.green, n: e.latest.intraday ? 'TODAY' : fmtShort(e.latest.date).toUpperCase() }]);
     });
@@ -1574,9 +1681,55 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     renderPulse();
   };
   (function () {
-    var load = function () { getLive('/api/cds', renderCds); };
+    var load = function () { getLive('/api/cds', function (j) { renderCds(j); markCheck('cds', 300000, 'CDS LEVELS CHECKED'); }); };
+    LIVE.reloadCds = load;
     load(); setInterval(load, 300000);
   })();
+
+  // ---------- swap tape: every new single-name CDS trade DTCC publishes ----------
+  (function () {
+    if (!$('c-swaps')) return;
+    var seen = {}, first = true, f0 = d3.format(',.0f');
+    var tenor = function (t) { return t == null ? '—' : (Math.round(t * 100) / 100) + 'Y'; };
+    var price = function (x) {
+      if (x.implied_spread_bp != null) return '≈' + f0(x.implied_spread_bp) + ' bp';
+      if (x.spread_bp != null) return f0(x.spread_bp) + ' bp';
+      if (x.upfront_pct != null) return 'UPF ' + minus(x.upfront_pct.toFixed(1)) + '%' + (x.coupon_pct != null ? ' / ' + x.coupon_pct + '%' : '');
+      return x.coupon_pct != null ? x.coupon_pct + '% CPN' : '—';
+    };
+    var render = function (j) {
+      if (!j || !Array.isArray(j.trades) || !j.trades.length) return;
+      $('c-swaps').hidden = false; showLiveBoard();
+      var host = $('sw-rows'); host.replaceChildren();
+      var newIdx = false;
+      j.trades.slice(0, 14).forEach(function (x) {
+        var fresh = !first && !seen[x.id];
+        var r = el('div', 'sw' + (x.ai ? ' ai' : '') + (x.index_name ? ' idx' : '') + (/^(ISIN|RED) /.test(x.entity) ? ' anon' : '') + (fresh ? ' new' : ''));
+        r.appendChild(el('span', 'tm', d3.utcFormat('%H:%M:%S')(new Date(x.executed))));
+        var en = el('span', 'ent', x.entity); if (x.ai) en.appendChild(el('span', 'tag', x.index_name ? 'INDEX' : 'AI')); r.appendChild(en);
+        r.appendChild(el('span', null, tenor(x.tenor_y)));
+        r.appendChild(el('span', 'sz', x.size));
+        r.appendChild(el('span', 'pr', price(x)));
+        var ag = el('span', 'ago'); ag.setAttribute('data-ago', x.published); ag.setAttribute('data-short', ''); r.appendChild(ag);
+        host.appendChild(r);
+        if (fresh && x.index_name) newIdx = true;
+      });
+      j.trades.forEach(function (x) { seen[x.id] = 1; });
+      first = false;
+      var lead = $('sw-lead'); lead.replaceChildren();
+      var li = j.trades.filter(function (x) { return x.index_name; })[0], nAI = j.trades.filter(function (x) { return x.ai; }).length;
+      if (li) { lead.append('Latest index-name trade: '); lead.appendChild(el('b', null, li.entity + ' ' + tenor(li.tenor_y) + (li.implied_spread_bp != null ? ' at ≈' + f0(li.implied_spread_bp) + ' bp' : ''))); lead.append(', executed ' + d3.utcFormat('%H:%M UTC')(new Date(li.executed)) + '. '); }
+      lead.append(nAI + ' of the last ' + j.trades.length + ' single-name trades on the tape are in AI-infrastructure names.');
+      var nt = $('sw-note'); nt.replaceChildren();
+      nt.append('New single-name CDS trades in the order DTCC published them; dealers must report within 24 hours, most do within minutes. Price is the quoted spread where one is reported, otherwise the upfront and coupon; CoreWeave and Oracle upfronts are converted to a spread (≈) with the same model as the levels above. Sizes above the public cap show with a +. Context only: the levels above use on-the-run 5-year trades. ');
+      link(nt, 'DTCC SEC dashboard ↗', j.source_url);
+      tickChrome();
+      if (newIdx && LIVE.reloadCds) setTimeout(LIVE.reloadCds, 4000);
+    };
+    var load = function () { getLive('/api/tape', function (j) { render(j); markCheck('sw', 20000, 'CHECKED'); }); };
+    load(); setInterval(function () { if (!document.hidden) load(); }, 20000);
+  })();
+
 
   (function () {
     var load = function () { getLive('/api/live', renderLive); };
