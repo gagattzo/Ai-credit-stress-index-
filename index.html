@@ -1311,7 +1311,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
   var showLiveBoard = function () { $('live').hidden = false; };
   var stampUpdated = function (iso) {
     var t = new Date(iso); if (isNaN(t)) return;
-    $('lv-upd').textContent = 'LIVE · ' + d3.utcFormat('%H:%M UTC')(t);
+    $('lv-upd').textContent = (LIVE.snapshot ? 'SNAPSHOT · ' + d3.utcFormat('%-d %b %H:%M UTC')(t) : 'LIVE · ' + d3.utcFormat('%H:%M UTC')(t));
   };
   var drawLiveSparks = function () {
     var j = LIVE.data; if (!j) return;
@@ -1386,6 +1386,16 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     LIVE.tick = tick;
     if (tick.length || LIVE.cdsTick) renderTicker((LIVE.cdsTick || []).concat(tick).concat(TICK_BASE));
   };
+  // Loader: same-origin API; falls back to an embedded, clearly labelled snapshot (used by offline previews only).
+  var SNAP = window.ACSI_SNAPSHOT || null;
+  var getLive = function (path, cb) {
+    var fallback = function () { if (SNAP && SNAP[path]) { LIVE.snapshot = true; cb(SNAP[path]); } };
+    if (!/^https?:/.test(location.protocol) || !window.fetch) { fallback(); return; }
+    var ctrl = window.AbortController ? new AbortController() : null;
+    if (ctrl) setTimeout(function () { ctrl.abort(); }, 12000);
+    fetch(path, ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) { LIVE.snapshot = false; cb(j); } else fallback(); }).catch(fallback);
+  };
+
   // DTCC public swap tape: daily 5-year CDS levels
   var CDSD = null;
   var miniSpark = function (host, pts, color) {
@@ -1431,24 +1441,18 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     if (LIVE.cdsTick) renderTicker(LIVE.cdsTick.concat(LIVE.tick || []).concat(TICK_BASE));
   };
   (function () {
-    if (!/^https?:/.test(location.protocol) || !window.fetch) return;
-    var load = function () { fetch('/api/cds').then(function (r) { return r.ok ? r.json() : null; }).then(renderCds).catch(function () {}); };
+    var load = function () { getLive('/api/cds', renderCds); };
     load(); setInterval(load, 900000);
   })();
 
   (function () {
-    if (!/^https?:/.test(location.protocol) || !window.fetch) return;
-    var load = function () {
-      var ctrl = window.AbortController ? new AbortController() : null;
-      if (ctrl) setTimeout(function () { ctrl.abort(); }, 12000);
-      fetch('/api/live', ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.ok ? r.json() : null; }).then(renderLive).catch(function () {});
-    };
+    var load = function () { getLive('/api/live', renderLive); };
     load(); setInterval(load, 120000);
   })();
 
   (function () {
     var card = $('c-live');
-    if (!card || !/^https?:/.test(location.protocol) || !window.fetch) return;
+    if (!card) return;
     var a1 = input('A1');
     var render = function (j) {
       if (!j || j.median_usd_per_gpu_hr == null || !Array.isArray(j.sources) || !j.sources.length) return;
@@ -1464,14 +1468,10 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
         r.appendChild(el('b', null, '$' + Number(s.usd_per_gpu_hr).toFixed(2))); src.appendChild(r);
       });
       var t = new Date(j.updated);
-      $('lv-age').textContent = isNaN(t) ? 'LIVE' : 'LIVE · ' + d3.utcFormat('%H:%M UTC')(t);
+      $('lv-age').textContent = isNaN(t) ? 'LIVE' : (LIVE.snapshot ? 'SNAPSHOT · ' : 'LIVE · ') + d3.utcFormat('%H:%M UTC')(t);
       $('lv-note').textContent = 'Asking and list prices on public GPU marketplaces, refreshed every few minutes. These are not contract rates and not an index input; the index uses Silicon Data\u2019s weekly H100 print ($' + Number(a1.raw).toFixed(2) + ' on ' + fmtShort(a1.obs_date) + ').';
     };
-    var load = function () {
-      var ctrl = window.AbortController ? new AbortController() : null;
-      if (ctrl) setTimeout(function () { ctrl.abort(); }, 9000);
-      fetch('/api/gpu', ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.ok ? r.json() : null; }).then(render).catch(function () {});
-    };
+    var load = function () { getLive('/api/gpu', render); };
     load();
     setInterval(load, 120000);
   })();
