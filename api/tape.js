@@ -130,7 +130,7 @@ module.exports = async (req, res) => {
         size: sizeText(r.notionalAmountLeg1),
       }, terms(r, who));
     })
-    .filter((t) => t.entity !== 'UNNAMED')
+    .filter((t) => t.entity !== 'UNNAMED' && t.tenor_y !== null && t.tenor_y >= 0.25)
     .sort((a, b) => (a.published < b.published ? 1 : a.published > b.published ? -1 : 0))
     .slice(0, 40);
 
