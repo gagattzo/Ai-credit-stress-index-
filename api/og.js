@@ -99,7 +99,14 @@ module.exports = async (req, res) => {
     const buf = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
     res.statusCode = 200;
     res.setHeader('content-type', 'image/png');
-    res.setHeader('cache-control', 'public, s-maxage=600, stale-while-revalidate=3600');
+    // A stamped share card (?v=) is a frozen moment: keep it at the edge for a week once it has
+    // the full live row. If the live row came back short (cold caches), keep it briefly so the
+    // next crawler fetch gets the fuller card.
+    const full = !live || live.items.length >= 3;
+    res.setHeader('cache-control', q.v && full
+      ? 'public, max-age=3600, s-maxage=604800, stale-while-revalidate=604800'
+      : 'public, s-maxage=120, stale-while-revalidate=3600');
+    res.setHeader('content-length', String(buf.length));
     res.end(buf);
   } catch (e) {
     console.error('og card failed:', e && e.stack || e);

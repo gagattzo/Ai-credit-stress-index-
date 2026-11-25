@@ -58,10 +58,11 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const fmtDay = (iso) => { const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); return d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; };
 
 // Live context for the card, read from this deployment's own cached endpoints. Never required.
-async function getLiveContext(base) {
+// Kept short: X's crawler gives up on slow images, so a fast card beats a complete one.
+async function getLiveContext(base, ms = 1800) {
   const get = async (p) => {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 5000);
+    const t = setTimeout(() => ctrl.abort(), ms);
     try { const r = await fetch(base + p, { signal: ctrl.signal }); return r.ok ? await r.json() : null; }
     catch (e) { return null; } finally { clearTimeout(t); }
   };
