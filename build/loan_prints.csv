@@ -1,0 +1,4 @@
+facility,price,price_text,kind,date,grade,source,url
+"Project Jupiter (NM), Oracle tenant",85,below mid-80s,ING auction: bids came in too low; taken at the bound,2026-11-20,D,Bloomberg via Briefs (20 Nov); FT via FourWeekMBA (17 Nov),https://www.briefs.co/news/ing-s-500-million-data-center-loan-auction-underwhelms-shift/
+"Lighthouse (WI), Oracle tenant",90,over 90,"Quote, lower bound",2026-11-17,D,FT via FourWeekMBA (17 Nov),https://fourweekmba.com/ai-ing-socgen-offer-up-to-800m-of-data-center-debt-ft-says/
+"Frontier (TX), Oracle tenant",90,over 90,"Quote, lower bound",2026-11-17,D,FT via FourWeekMBA (17 Nov),https://fourweekmba.com/ai-ing-socgen-offer-up-to-800m-of-data-center-debt-ft-says/

@@ -1,0 +1,110 @@
+{
+ "rows": [
+  {
+   "scenario": "Base reading",
+   "financing": 56.6,
+   "asset": 15.3,
+   "gap": 41.3,
+   "change": 0.0
+  },
+  {
+   "scenario": "Oracle distress line at 500 bp (high-yield coupon) not 1,000",
+   "financing": 67.1,
+   "asset": 15.3,
+   "gap": 51.8,
+   "change": 10.6
+  },
+  {
+   "scenario": "Loan calm anchor at par (100) not 98",
+   "financing": 58.4,
+   "asset": 15.3,
+   "gap": 43.1,
+   "change": 1.9
+  },
+  {
+   "scenario": "Loans: only the Jupiter print (85)",
+   "financing": 65.8,
+   "asset": 15.3,
+   "gap": 50.5,
+   "change": 9.3
+  },
+  {
+   "scenario": "H100 anchors at 100% utilization ($2.85 / $1.65)",
+   "financing": 56.6,
+   "asset": 0.0,
+   "gap": 56.6,
+   "change": 15.3
+  },
+  {
+   "scenario": "H100 anchors at 70% utilization ($4.07 / $2.36)",
+   "financing": 56.6,
+   "asset": 28.4,
+   "gap": 28.2,
+   "change": -13.0
+  },
+  {
+   "scenario": "Ornn OCPI-H100 ($3.03) instead of Silicon Data",
+   "financing": 56.6,
+   "asset": 17.7,
+   "gap": 38.9,
+   "change": -2.3
+  },
+  {
+   "scenario": "Leave out the Oracle CDS input",
+   "financing": 72.2,
+   "asset": 15.3,
+   "gap": 56.9,
+   "change": 15.6
+  },
+  {
+   "scenario": "Leave out the Blackwell trend input",
+   "financing": 56.6,
+   "asset": 30.7,
+   "gap": 25.9,
+   "change": -15.3
+  },
+  {
+   "scenario": "Leave out the CoreWeave bond input",
+   "financing": 34.9,
+   "asset": 15.3,
+   "gap": 19.5,
+   "change": -21.7
+  },
+  {
+   "scenario": "SocGen quote counted once (loan median 87.5)",
+   "financing": 61.2,
+   "asset": 15.3,
+   "gap": 45.9,
+   "change": 4.6
+  },
+  {
+   "scenario": "Ornn for H100 ($3.03); Blackwell trend unavailable",
+   "financing": 56.6,
+   "asset": 35.3,
+   "gap": 21.3,
+   "change": -20.0
+  },
+  {
+   "scenario": "70% utilization and no Blackwell input",
+   "financing": 56.6,
+   "asset": 56.7,
+   "gap": -0.1,
+   "change": -41.4
+  },
+  {
+   "scenario": "Leave out both inputs at their limits (CoreWeave, Blackwell)",
+   "financing": 34.9,
+   "asset": 30.7,
+   "gap": 4.2,
+   "change": -37.0
+  }
+ ],
+ "meta": [
+  {
+   "label": "build.py",
+   "value": "\"\"\"AI Credit Stress Index (ACSI) - v0.1 preview edition builder.\n\nDerives the two inputs that need arithmetic before scoring (CoreWeave bond\nspread over Treasuries; nothing else), writes the datasets the page reads, and\nrecomputes the index plus an anchor-sensitivity table so the page's live\ncalculations can be checked against an independent implementation.\n\nAll raw observations are copied from the research files in ../data, each with\nits date, source and URL. Nothing is estimated or interpolated except the\nTreasury yield at the bond's remaining maturity (linear between FRED's 5- and\n7-year constant-maturity yields), which is stated on the page.\n\"\"\"\nimport csv, json, statistics\nfrom datetime import date\n\nAS_OF = date(2026, 11, 24)\nMETHOD = \"v0.1\"\n\n# ---------- F1: CoreWeave 9.625% notes due 15 Jul 2032, price -> yield -> G-spread\nCOUPON = 9.625          # % per year, paid semiannually (15 Jan / 15 Jul)\nMATURITY = date(2032, 7, 15)\nPRICE = 74.9            # clean price, cents; Bloomberg via Yahoo Finance, Trace 1:36pm NY, 24 Nov 2026\nSETTLE = date(2026, 11, 25)\nUST5, UST7 = 4.71, 4.80 # FRED DGS5 / DGS7, 20 Nov 2026 (latest shown when compiled)\n\n\ndef d360(a, b):\n    \"\"\"30/360 day count between two dates.\"\"\"\n    d1, d2 = min(a.day, 30), b.day\n    if d1 == 30 and d2 == 31:\n        d2 = 30\n    return (b.year - a.year) * 360 + (b.month - a.month) * 30 + (d2 - d1)\n\n\ndef coupon_dates():\n    out, y = [], 2026\n    while True:\n        for m in (1, 7):\n            dt = date(y, m, 15)\n            if dt > SETTLE and dt <= MATURITY:\n                out.append(dt)\n        if y > MATURITY.year:\n            break\n        y += 1\n    return sorted(out)\n\n\ndef ytm(clean):\n    cds = coupon_dates()\n    prev = date(2026, 7, 15)\n    accrued = COUPON / 2 * d360(prev, SETTLE) / 180\n    dirty = clean + accrued\n    frac = d360(SETTLE, cds[0]) / 180  # fraction of a period to the next coupon\n\n    def pv(y):\n        r = y / 200\n        tot = 0.0\n        for i, _ in enumerate(cds):\n            cf = COUPON / 2 + (100 if i == len(cds) - 1 else 0)\n            tot += cf / (1 + r) ** (frac + i)\n        return tot\n\n    lo, hi = 0.0, 60.0\n    for _ in range(200):\n        mid = (lo + hi) / 2\n        if pv(mid) > dirty:\n            lo = mid\n        else:\n            hi = mid\n    return (lo + hi) / 2, accrued\n\n\nyld, accrued = ytm(PRICE)\nyears = (MATURITY - AS_OF).days / 365.25\nust = UST5 + (UST7 - UST5) * (years - 5) / 2\ngspread = (yld - ust) * 100  # bp\n\n# ---------- inputs (raw values + fixed anchors from the v0.1 method)\ninputs = [\n    dict(id=\"F1\", side=\"financing\", order=1, name=\"Neocloud bond (CoreWeave)\", price=PRICE,\n         instrument=\"CoreWeave 9.625% notes due Jul 2032: spread over Treasuries\",\n         raw=round(gspread, 1), unit=\"bp\",\n         shown=f\"+{gspread:,.0f} bp (intraday low {PRICE}, yield {yld:.1f}%)\",\n         obs_date=\"2026-11-24\", calm=500, distress=1000, fresh_days=7, window_days=14, grade=\"C\",\n         source=\"Bloomberg via Yahoo Finance (Trace print, 24 Nov); FRED DGS5/DGS7 (20 Nov)\",\n         url=\"https://finance.yahoo.com/markets/stocks/articles/coreweave-bonds-hit-time-lows-185527465.html\",\n         note=f\"Yield worked out from one reported intraday price; Treasury {ust:.2f}% interpolated at {years:.2f} years from 20 Nov, the latest FRED had posted.\"),\n    dict(id=\"F2\", side=\"financing\", order=2, name=\"Levered hyperscaler\",\n         instrument=\"Oracle 5-year credit default swap\",\n         raw=327.9, unit=\"bp\", shown=\"327.9 bp\",\n         obs_date=\"2026-11-20\", calm=100, distress=1000, fresh_days=7, window_days=21, grade=\"C\",\n         source=\"Wallstreetcn via Longbridge, citing ICE (20 Nov)\",\n         url=\"https://longbridge.com/en/news/306300698\",\n         note=\"Intraday level reported by a named outlet; no licensed CDS feed yet.\"),\n    dict(id=\"F3\", side=\"financing\", order=3, name=\"Data-center construction loans\",\n         instrument=\"Secondary prices of AI data-center loans, median across facilities\",\n         raw=None, unit=\"cents\", shown=\"\",\n         obs_date=\"\", calm=98, distress=80, fresh_days=14, window_days=56, grade=\"D\",\n         source=\"Bloomberg via Briefs (20 Nov); FT via FourWeekMBA (17 Nov)\",\n         url=\"https://www.briefs.co/news/ing-s-500-million-data-center-loan-auction-underwhelms-shift/\",\n         note=\"Press-reported levels taken at the bound ('below mid-80s' as 85, 'over 90' as 90). Worked out from the loan prints below.\"),\n    dict(id=\"A1\", side=\"asset\", order=4, name=\"What an H100 rents for\",\n         instrument=\"Silicon Data H100 rental index (SDH100RT), $/GPU-hour\",\n         raw=3.10, unit=\"$/hr\", shown=\"$3.10 / GPU-hour\",\n         obs_date=\"2026-11-24\", calm=3.56, distress=2.06, fresh_days=7, window_days=14, grade=\"B\",\n         source=\"Silicon Data index page (24 Nov); cross-check Ornn OCPI-H100 $3.03 (23 Nov)\",\n         url=\"https://www.silicondata.com/products/silicon-index/h100\",\n         note=\"Anchors: ~10% return and break-even rents at 80% utilization (Latent Space thresholds / 0.8). Highest since at least Jan 2025, still below the calm anchor.\"),\n    dict(id=\"A2\", side=\"asset\", order=5, name=\"Blackwell rent trend\",\n         instrument=\"Silicon Data B200 rental index, % change over about half a year\",\n         raw=round((6.94 / 5.36 - 1) * 100, 1), unit=\"%\",\n         shown=f\"+{(6.94 / 5.36 - 1) * 100:.1f}% ($5.36 at end-June to $6.94)\",\n         obs_date=\"2026-11-24\", calm=-8, distress=-40, fresh_days=7, window_days=14, grade=\"B\",\n         source=\"Silicon Data (B200 index page, 24 Nov; blog, 30 Jun)\",\n         url=\"https://www.silicondata.com/products/silicon-index/b200\",\n         note=\"Method asks for 26 weeks; end-June (about 21 weeks) is the nearest public print.\"),\n]\n\nloan_prints = [\n    dict(facility=\"Project Jupiter (NM), Oracle tenant\", price=85, price_text=\"below mid-80s\",\n         kind=\"ING auction: bids came in too low; taken at the bound\", date=\"2026-11-20\", grade=\"D\",\n         source=\"Bloomberg via Briefs (20 Nov); FT via FourWeekMBA (17 Nov)\",\n         url=\"https://www.briefs.co/news/ing-s-500-million-data-center-loan-auction-underwhelms-shift/\"),\n    dict(facility=\"Lighthouse (WI), Oracle tenant\", price=90, price_text=\"over 90\",\n         kind=\"Quote, lower bound\", date=\"2026-11-17\", grade=\"D\",\n         source=\"FT via FourWeekMBA (17 Nov)\",\n         url=\"https://fourweekmba.com/ai-ing-socgen-offer-up-to-800m-of-data-center-debt-ft-says/\"),\n    dict(facility=\"Frontier (TX), Oracle tenant\", price=90, price_text=\"over 90\",\n         kind=\"Quote, lower bound\", date=\"2026-11-17\", grade=\"D\",\n         source=\"FT via FourWeekMBA (17 Nov)\",\n         url=\"https://fourweekmba.com/ai-ing-socgen-offer-up-to-800m-of-data-center-debt-ft-says/\"),\n]\n\n# ---------- scoring (mirrors the page's calculation)\n\ndef score(x, c, d):\n    return max(0.0, min(100.0, 100 * (x - c) / (d - c)))\n\n\ndef compute(inp, loans, overrides=None, drop=()):\n    o = overrides or {}\n    rows = {}\n    for i in inp:\n        if i[\"id\"] in drop:\n            continue\n        raw = i[\"raw\"]\n        if i[\"id\"] == \"F3\":\n            raw = o.get(\"F3_raw\", statistics.median(l[\"price\"] for l in loans))\n        raw = o.get(i[\"id\"] + \"_raw\", raw)\n        c = o.get(i[\"id\"] + \"_calm\", i[\"calm\"])\n        d = o.get(i[\"id\"] + \"_distress\", i[\"distress\"])\n        rows[i[\"id\"]] = (i[\"side\"], score(raw, c, d))\n    F = statistics.mean(v for s, v in rows.values() if s == \"financing\")\n    A = statistics.mean(v for s, v in rows.values() if s == \"asset\")\n    return F, A, F - A\n\n\nbase = compute(inputs, loan_prints)\nscen = [\n    (\"Base reading\", {}, ()),\n    (\"Oracle distress line at 500 bp (high-yield coupon) not 1,000\", {\"F2_distress\": 500}, ()),\n    (\"Loan calm anchor at par (100) not 98\", {\"F3_calm\": 100}, ()),\n    (\"Loans: only the Jupiter print (85)\", {\"F3_raw\": 85}, ()),\n    (\"H100 anchors at 100% utilization ($2.85 / $1.65)\", {\"A1_calm\": 2.85, \"A1_distress\": 1.65}, ()),\n    (\"H100 anchors at 70% utilization ($4.07 / $2.36)\", {\"A1_calm\": 4.07, \"A1_distress\": 2.36}, ()),\n    (\"Ornn OCPI-H100 ($3.03) instead of Silicon Data\", {\"A1_raw\": 3.03}, ()),\n    (\"Leave out the Oracle CDS input\", {}, (\"F2\",)),\n    (\"Leave out the Blackwell trend input\", {}, (\"A2\",)),\n    (\"Leave out the CoreWeave bond input\", {}, (\"F1\",)),\n    (\"SocGen quote counted once (loan median 87.5)\", {\"F3_raw\": 87.5}, ()),\n    (\"Ornn for H100 ($3.03); Blackwell trend unavailable\", {\"A1_raw\": 3.03}, (\"A2\",)),\n    (\"70% utilization and no Blackwell input\", {\"A1_calm\": 4.07, \"A1_distress\": 2.36}, (\"A2\",)),\n    (\"Leave out both inputs at their limits (CoreWeave, Blackwell)\", {}, (\"F1\", \"A2\")),\n]\nsens = []\nfor name, ov, drop in scen:\n    F, A, G = compute(inputs, loan_prints, ov, drop)\n    sens.append(dict(scenario=name, financing=round(F, 1), asset=round(A, 1), gap=round(G, 1),\n                     change=round(G - base[2], 1)))\n\nseries = []\ndef add(sid, name, dt, prec, val, unit, grade, src, url, note=\"\"):\n    series.append(dict(series=sid, series_name=name, date=dt, precision=prec, value=val, unit=unit,\n                       grade=grade, source=src, url=url, note=note))\n\nCW = (\"crwv\", \"CoreWeave 5Y CDS\")\nOR = (\"orcl\", \"Oracle 5Y CDS\")\nH1 = (\"h100\", \"H100 rent (SDH100RT)\")\nfor dt, prec, v, g, s, u in [\n    (\"2025-12-15\", \"month\", 881, \"med\", \"The Next Web (Dec 2025 peak)\", \"https://thenextweb.com/news/coreweave-credit-rebound-applied-digital-junk-bond-data-center\"),\n    (\"2026-06-05\", \"week\", 452, \"med\", \"The Next Web (2026 low, early June)\", \"https://thenextweb.com/news/coreweave-credit-rebound-applied-digital-junk-bond-data-center\"),\n    (\"2026-07-28\", \"day\", 855, \"med\", \"24/7 Wall St\", \"https://247wallst.com/investing/2026/07/29/nebius-drops-10-coreweave-sinks-9-as-rising-credit-swap-costs-hit-the-ai-cloud-trade/\"),\n    (\"2026-10-15\", \"day\", 1194.5, \"high\", \"Bloomberg via Edward Conard\", \"https://www.edwardconard.com/macro-roundup/cds-prices-on-coreweave-debt-imply-more-than-a-60-chance-of-default-within-the-next-five-years-the-firms-debt-is-selling-off-with-9-notes-maturing-in-2031-trading-as-low-as-79-9-cents-on-the-dolla/\"),\n    (\"2026-10-19\", \"day\", 1082, \"med\", \"Wealth Professional citing CNBC\", \"https://www.wealthprofessional.ca/investments/equity-markets/oracles-default-insurance-hits-high-yield-levels-as-ai-debt-mounts/393817\"),\n    (\"2026-11-05\", \"day\", 1289, \"med\", \"TechJack Solutions citing CNBC / Deutsche Bank (intraday, at least)\", \"https://techjacksolutions.com/ai-brief/coreweave-2032-bonds-16-percent-yield-q3-earnings/\"),\n    (\"2026-11-06\", \"day\", 1155, \"med\", \"TechJack Solutions citing CNBC\", \"https://techjacksolutions.com/ai-brief/coreweave-2032-bonds-16-percent-yield-q3-earnings/\"),\n    (\"2026-11-10\", \"week\", 1135, \"med\", \"Finimize citing Reuters (approximate)\", \"https://finimize.com/content/coreweaves-revenue-beat-didnt-quiet-its-debt-fears\"),\n    (\"2026-11-20\", \"day\", 1232.6, \"high\", \"Wallstreetcn via Longbridge\", \"https://longbridge.com/en/news/306300698\"),\n]:\n    add(CW[0], CW[1], dt, prec, v, \"bp\", g, s, u)\nfor dt, prec, v, g, s, u in [\n    (\"2025-10-15\", \"month\", 58, \"med\", \"IFR\", \"https://www.ifre.com/topic-codes/2509450/cds-market-flashes-warning-on-ai-ratings-downgrades\"),\n    (\"2025-11-14\", \"day\", 106, \"high\", \"Bloomberg\", \"https://www.bloomberg.com/news/articles/2025-11-14/oracle-credit-derivatives-jump-as-traders-rush-to-hedge-ai-bets\"),\n    (\"2025-11-25\", \"day\", 125, \"high\", \"Bloomberg\", \"https://www.bloomberg.com/news/articles/2025-11-26/morgan-stanley-warns-oracle-credit-protection-nearing-record-high\"),\n    (\"2025-12-11\", \"day\", 141, \"high\", \"Bloomberg\", \"https://www.bloomberg.com/news/articles/2025-12-10/oracle-credit-risk-gauge-deteriorates-after-earnings-report\"),\n    (\"2026-03-27\", \"day\", 198.18, \"high\", \"Bloomberg\", \"https://www.bloomberg.com/news/articles/2026-03-27/oracle-s-credit-risk-measure-nears-record-high-on-ai-debt-fears\"),\n    (\"2026-07-20\", \"day\", 203, \"med\", \"Let's Data Science citing Bloomberg/ICE\", \"https://letsdatascience.com/news/oracle-credit-risk-rises-amid-ai-buildout-e40ec988\"),\n    (\"2026-10-08\", \"week\", 260, \"high\", \"Reuters via BusinessDay (a week before 15 Oct)\", \"https://www.businessday.co.za/world/international-companies/2026-10-15-ai-credit-fears-push-tech-default-insurance-to-record-highs/\"),\n    (\"2026-10-15\", \"day\", 288, \"high\", \"Reuters via BusinessDay\", \"https://www.businessday.co.za/world/international-companies/2026-10-15-ai-credit-fears-push-tech-default-insurance-to-record-highs/\"),\n    (\"2026-10-19\", \"day\", 315, \"med\", \"Wealth Professional citing CNBC\", \"https://www.wealthprofessional.ca/investments/equity-markets/oracles-default-insurance-hits-high-yield-levels-as-ai-debt-mounts/393817\"),\n    (\"2026-11-02\", \"day\", 292, \"med\", \"TIKR via Yahoo Finance\", \"https://finance.yahoo.com/markets/stocks/articles/oracle-credit-default-swaps-hit-165226586.html\"),\n    (\"2026-11-06\", \"day\", 298, \"med\", \"FourWeekMBA citing CNBC\", \"https://fourweekmba.com/ai-coreweave-cds-is-8x-nvidias-139bp-as-credit-prices-ai-risk/\"),\n    (\"2026-11-20\", \"day\", 327.9, \"high\", \"Wallstreetcn via Longbridge, citing ICE\", \"https://longbridge.com/en/news/306300698\"),\n]:\n    add(OR[0], OR[1], dt, prec, v, \"bp\", g, s, u)\nSDB = \"https://www.silicondata.com/blog/\"\nfor dt, v, g, u in [\n    (\"2025-12-09\", 2.00, \"high\", SDB + \"h100-price-spike\"),\n    (\"2026-01-06\", 2.20, \"high\", SDB + \"h100-price-spike\"),\n    (\"2026-04-01\", 2.63, \"high\", SDB + \"h100-index-may-2026-two-tiers-two-regimes\"),\n    (\"2026-04-08\", 2.47, \"high\", SDB + \"h100-index-may-2026-two-tiers-two-regimes\"),\n    (\"2026-04-30\", 2.59, \"high\", SDB + \"h100-index-may-2026-two-tiers-two-regimes\"),\n    (\"2026-05-31\", 2.73, \"high\", SDB + \"h100-index-may-2026-two-tiers-two-regimes\"),\n    (\"2026-06-30\", 2.59, \"high\", SDB + \"hopper-ampere-gpu-rents-coreweave-repricing\"),\n    (\"2026-07-27\", 2.75, \"med\", SDB + \"b200-rental-price-august-2026-update\"),\n    (\"2026-09-07\", 2.63, \"med\", SDB + \"b200-rental-price-august-2026-update\"),\n    (\"2026-09-30\", 2.75, \"high\", SDB + \"hopper-ampere-gpu-rents-coreweave-repricing\"),\n    (\"2026-10-26\", 2.89, \"high\", \"https://www.silicondata.com/products/silicon-index/h100\"),\n    (\"2026-11-02\", 2.94, \"high\", \"https://www.silicondata.com/products/silicon-index/h100\"),\n    (\"2026-11-09\", 3.01, \"high\", \"https://www.silicondata.com/products/silicon-index/h100\"),\n    (\"2026-11-16\", 3.08, \"high\", \"https://www.silicondata.com/products/silicon-index/h100\"),\n    (\"2026-11-24\", 3.10, \"high\", \"https://www.silicondata.com/products/silicon-index/h100\"),\n]:\n    add(H1[0], H1[1], dt, \"day\", v, \"$/hr\", g, \"Silicon Data\", u)\n\ncontext = [\n    dict(date=\"2026-11-23\", item=\"Nvidia's board reinstated Jensen Huang as CEO, 11 days after he resigned.\",\n         source=\"Nvidia press release (SEC EDGAR)\", url=\"https://www.sec.gov/Archives/edgar/data/0001045810/000104581026000090/nov23pressrelease.htm\"),\n    dict(date=\"2026-11-20\", item=\"ING's ~$500m auction of a dozen data-center loans stalled on weak demand; the bank moved to one-by-one sales.\",\n         source=\"Bloomberg via Briefs\", url=\"https://www.briefs.co/news/ing-s-500-million-data-center-loan-auction-underwhelms-shift/\"),\n    dict(date=\"2026-11-17\", item=\"HSBC sold a ~$300m slice of the $18bn Project Jupiter financing in the mid-80s, shortly after Oracle's force-majeure notice (reported 17 Nov).\",\n         source=\"Bloomberg via The Star\", url=\"https://www.thestar.com.my/business/business-news/2026/11/17/hsbc-sold-us300mil-troubled-data-centre-loan-at-discount\"),\n    dict(date=\"2026-11-13\", item=\"Blackstone's QTS cut a private data-center debt sale to about $300m, from roughly $800m.\",\n         source=\"Startup Fortune citing Bloomberg\", url=\"https://startupfortune.com/blackstones-qts-cuts-its-ai-data-center-debt-sale-to-300-million/\"),\n    dict(date=\"2026-11-05\", item=\"AI-related investment-grade bonds traded about 148 bp over Treasuries, against 77 bp for the rest of the market (BofA).\",\n         source=\"FourWeekMBA citing BofA\", url=\"https://fourweekmba.com/ai-coreweave-cds-is-8x-nvidias-139bp-as-credit-prices-ai-risk/\"),\n    dict(date=\"2026-11-09\", item=\"Reuters: Nebius explored a high-yield bond in September and decided against it in October; also in October it signed a $3.5bn secured loan from Citigroup.\",\n         source=\"Reuters via Yahoo Finance\", url=\"https://finance.yahoo.com/technology/ai/articles/banks-investors-grow-wary-ai-110413813.html\"),\n    dict(date=\"2026-09-24\", item=\"Oracle sent a force-majeure notice on Project Jupiter, its New Mexico Stargate campus.\",\n         source=\"Axios\", url=\"https://axios.com/2026/09/25/oracle-debt-data-centers\"),\n]\n\nedition = [dict(as_of=AS_OF.isoformat(), method=METHOD, label=\"Preview edition\",\n                dead_band=15, treasury_note=f\"{ust:.2f}%\")]\n\n# ---------- write files\ncode = open(__file__).read()\n\ndef wcsv(path, rows):\n    with open(path, \"w\", newline=\"\") as f:\n        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))\n        w.writeheader()\n        w.writerows(rows)\n\njson.dump({\"rows\": inputs, \"meta\": [\n    {\"label\": \"build.py\", \"value\": code, \"type\": \"code\", \"lang\": \"python\"},\n    {\"label\": \"Input\", \"value\": \"debt_points.csv, asset_points.csv (research files)\"}]},\n    open(\"inputs.json\", \"w\"), indent=1)\njson.dump({\"rows\": sens, \"meta\": [\n    {\"label\": \"build.py\", \"value\": code, \"type\": \"code\", \"lang\": \"python\"}]},\n    open(\"sensitivity.json\", \"w\"), indent=1)\nwcsv(\"loan_prints.csv\", loan_prints)\nwcsv(\"series.csv\", series)\nfor n, c in enumerate(context):\n    c[\"id\"] = f\"c{n+1}\"\nwcsv(\"context.csv\", context)\nwcsv(\"edition.csv\", edition)\n\nprint(f\"F1 yield {yld:.3f}%  accrued {accrued:.3f}  UST {ust:.3f}%  G-spread {gspread:.1f} bp  years {years:.2f}\")\nprint(\"base F/A/Gap:\", [round(x, 2) for x in base])\nfor s in sens:\n    print(s)\n",
+   "type": "code",
+   "lang": "python"
+  }
+ ]
+}
