@@ -152,7 +152,7 @@ module.exports = async (req, res) => {
     out.pendle.vault_over_sofr_bp = Math.round((apyToSimple360(out.pendle.vault.implied_apy) - out.sofr.rate) * 10000);
   }
   res.setHeader('content-type', 'application/json; charset=utf-8');
-  res.setHeader('cache-control', 'public, s-maxage=120, stale-while-revalidate=600');
+  res.setHeader('cache-control', 'public, s-maxage=60, stale-while-revalidate=600');
   res.setHeader('access-control-allow-origin', '*');
   res.status(200).send(JSON.stringify(out));
 };

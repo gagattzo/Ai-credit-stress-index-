@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/s/:id", "destination": "/api/share?id=:id" }
+  ],
+  "functions": {
+    "api/og.js": { "includeFiles": "{data.js,api/_fonts/**}", "memory": 1024, "maxDuration": 20 },
+    "api/share.js": { "includeFiles": "data.js" }
+  }
+}

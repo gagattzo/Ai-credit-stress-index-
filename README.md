@@ -19,6 +19,9 @@ This repo holds the static site for the AI Credit Stress Index, a weekly reading
     - Pendle's PT-sUSDai implied rate (USD.AI's GPU-loan vault) minus SOFR from the NY Fed, which is the onchain GPU credit spread.
     - Hyperliquid HIP-3 24/7 perps on CoreWeave, Nebius, IREN, Cipher, Oracle and Nvidia.
   - `api/gpu.js` (`/api/gpu`): live H100 asking prices from public GPU marketplaces. Akash and RunPod need no key; Vast.ai is used only if `VAST_API_KEY` is set.
+  - `api/og.js` (`/api/og`): the 1200×630 share card (PNG), drawn with satori and resvg from the weekly reading plus live context. It is the site's `og:image`; if it fails it redirects to the static `og.png`.
+  - `api/share.js` (`/s/<stamp>`, via the rewrite in `vercel.json`): a small page whose link preview is the live card, then redirects to the index. Each share gets a new stamp, so X and LinkedIn fetch a fresh card.
+  - Files in `api/` starting with `_` are helpers and fonts (Inter and JetBrains Mono, SIL Open Font License), not routes.
 - `e/<as-of date>/` holds a frozen copy of each edition, which is what the permanent link and the "cite this" line point to.
 - `og.png` is the 1200×630 image used for link previews.
 

@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
   });
   const med = median(sources.map((s) => s.usd_per_gpu_hr));
   res.setHeader('content-type', 'application/json; charset=utf-8');
-  res.setHeader('cache-control', 'public, s-maxage=300, stale-while-revalidate=900');
+  res.setHeader('cache-control', 'public, s-maxage=60, stale-while-revalidate=900');
   res.setHeader('access-control-allow-origin', '*');
   res.status(200).send(JSON.stringify({
     updated: new Date().toISOString(),

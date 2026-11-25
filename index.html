@@ -9,12 +9,14 @@
 <meta property="og:title" content="AI Credit Stress Index">
 <meta property="og:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Financing stress 58 · GPU asset stress 15 · Gap +43.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://ai-credit-stress-index.vercel.app/og.png">
+<meta property="og:image" content="https://ai-credit-stress-index.vercel.app/api/og">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:url" content="https://ai-credit-stress-index.vercel.app/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="AI Credit Stress Index">
 <meta name="twitter:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Gap +43.">
-<meta name="twitter:image" content="https://ai-credit-stress-index.vercel.app/og.png">
+<meta name="twitter:image" content="https://ai-credit-stress-index.vercel.app/api/og">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111114'/%3E%3Cpath d='M6 21 L12 15 L17 18 L26 9' stroke='%23e2773f' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='9' r='3' fill='%2345b08c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -143,6 +145,28 @@ h1 { font-size: clamp(36px, 6.4vw, 64px); line-height: 1.02; letter-spacing: -.0
 .halo { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; }
 @keyframes pulse { from { transform: scale(1); opacity: .55; } to { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .halo { animation: none; opacity: .25; } }
+
+/* live strip beside the gap, share bar */
+.sharebar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.btn-x { appearance: none; border: 0; border-radius: 9px; background: var(--fg); color: #09090a; font: 600 13px var(--sans); padding: 8px 14px; cursor: pointer; }
+.btn-x:hover { background: #fff; }
+.sharebar a.save { text-decoration: none; display: inline-flex; align-items: center; }
+.pulse { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.pulse-head { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--muted); flex-wrap: wrap; }
+.pulse-head b { color: var(--green); font-weight: 600; }
+.pulse-age { margin-left: auto; color: var(--dim); }
+.ldot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+.ldot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--green); animation: pulse 1.8s ease-out infinite; }
+.ldot.snap, .ldot.snap::after { background: var(--dim); animation: none; }
+@media (prefers-reduced-motion: reduce) { .ldot::after { animation: none; opacity: 0; } }
+.pulse-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+.pc { background: var(--card); padding: 10px 12px; min-width: 0; }
+.pc .k { font-family: var(--mono); font-size: 10.5px; color: var(--dim); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc .v { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.pc .d { font-family: var(--mono); font-size: 11px; margin-top: 2px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc.flash .v { animation: flash 1.4s ease-out; }
+@keyframes flash { from { color: var(--amber); } to { color: var(--fg); } }
+@media (max-width: 640px) { .pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pc .k, .pc .d { white-space: normal; } }
 
 /* flip, dollars, save */
 .flip-title { font-size: clamp(22px, 3.4vw, 32px); font-weight: 700; letter-spacing: -.03em; line-height: 1.12; margin: 6px 0 6px; max-width: 26ch; }
@@ -337,6 +361,16 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
             <p class="fact" id="fact"></p>
           </div>
           <div class="spread" id="spread" role="img"></div>
+        </div>
+        <div class="sharebar" id="sharebar">
+          <button class="btn-x" type="button" id="share-x">Share the gap on X</button>
+          <button class="save" type="button" id="share-copy">Copy link</button>
+          <a class="save" id="share-card" href="/api/og" target="_blank" rel="noopener">Card image ↗</a>
+        </div>
+        <div class="pulse" id="pulse" hidden>
+          <div class="pulse-head"><i class="ldot" id="pulse-dot"></i><b id="pulse-label">LIVE</b><span>WHAT MOVED SINCE THE <span id="pulse-ed">—</span> EDITION</span><span class="pulse-age" id="pulse-age"></span></div>
+          <div class="pulse-grid" id="pulse-grid"></div>
+          <p class="mnote">Markets that trade between weekly editions, refreshed every minute. Only Oracle CDS feeds the index, at the weekly close; the rest are context and never move the gap.</p>
         </div>
         <p class="mnote">GAP = FINANCING − GPU ASSET STRESS · WITHIN ±<span id="dead">15</span> COUNTS AS ALIGNED · IT SHOWS WHERE THE STRESS SITS, NOT WHO IS WRONG</p>
       </article>
@@ -1292,6 +1326,78 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
 
   // ---------- live board (served by /api/live and /api/gpu on Vercel; hidden when unavailable) ----------
   var LIVE = { data: null, tick: [] };
+
+  // ---------- live strip beside the gap: what moved since the edition (context, not the score) ----------
+  var PULSE = { at: null, prev: {} };
+  var renderPulse = function () {
+    var host = $('pulse-grid'); if (!host) return;
+    var j = LIVE.data, cds = typeof CDSD !== 'undefined' ? CDSD : null, gpu = LIVE.gpu, ed = ED.as_of, cells = [], f0 = d3.format(',.0f');
+    var sgn = function (v, f) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + f(Math.abs(v)); };
+    var sinceEd = ' VS ' + fmtShort(ed).toUpperCase();
+    var pm = j && j.polymarket && j.polymarket.markets && j.polymarket.markets[0];
+    if (pm && typeof pm.yes === 'number') {
+      var h0 = (j.polymarket.history_first_market || []).filter(function (h) { return h.date === ed; })[0];
+      cells.push({ id: 'odds', k: 'CRWV BANKRUPTCY BY ' + String(pm.deadline).slice(0, 4), v: (pm.yes * 100).toFixed(1) + '%', d: h0 ? sgn((pm.yes - h0.p) * 100, function (x) { return x.toFixed(1); }) + ' PTS' + sinceEd : 'POLYMARKET', s: h0 ? (pm.yes > h0.p ? 1 : pm.yes < h0.p ? -1 : 0) : null });
+    }
+    if (cds && Array.isArray(cds.entities)) ['CRWV', 'ORCL'].forEach(function (id) {
+      var e = cds.entities.filter(function (x) { return x.id === id && x.latest; })[0]; if (!e) return;
+      var r0 = e.series.filter(function (x) { return x.date === ed; })[0];
+      var dd = r0 ? e.latest.bp - r0.bp : null;
+      cells.push({ id: 'cds-' + id, k: id + ' 5Y CDS · ' + fmtShort(e.latest.date).toUpperCase(), v: f0(e.latest.bp) + ' bp', d: dd === null ? 'DTCC TAPE' : sgn(dd, f0) + ' BP' + sinceEd, s: dd === null ? null : dd > 0 ? 1 : dd < 0 ? -1 : 0 });
+    });
+    var hl = j && j.hyperliquid && (j.hyperliquid.rows || []).filter(function (r) { return r.symbol === 'CRWV'; })[0];
+    if (hl) cells.push({ id: 'perp', k: 'CRWV 24/7 PERP', v: '$' + Number(hl.mark).toFixed(2), d: sgn(hl.change_24h * 100, function (x) { return x.toFixed(1); }) + '% 24H', s: hl.change_24h < 0 ? 1 : hl.change_24h > 0 ? -1 : 0 });
+    var pd = j && j.pendle;
+    if (pd && pd.premium_bp != null) {
+      var p0 = (pd.premium_history || []).filter(function (x) { return x.date === ed; })[0];
+      var dp = p0 ? pd.premium_bp - p0.bp : null;
+      cells.push({ id: 'pendle', k: 'GPU-LOAN PREMIUM · PENDLE', v: minus((pd.premium_bp > 0 ? '+' : '') + f0(pd.premium_bp)) + ' bp', d: dp === null ? 'USD.AI' : sgn(dp, f0) + ' BP' + sinceEd, s: dp === null ? null : dp > 0 ? 1 : dp < 0 ? -1 : 0 });
+    }
+    if (gpu && gpu.median_usd_per_gpu_hr != null) cells.push({ id: 'h100', k: 'H100 MARKETPLACE ASK', v: '$' + Number(gpu.median_usd_per_gpu_hr).toFixed(2) + '/hr', d: (gpu.sources || []).map(function (x) { return String(x.name).split(' ')[0].toUpperCase(); }).join(' · '), s: null });
+    if (!cells.length) return;
+    $('pulse').hidden = false; $('pulse-ed').textContent = fmtShort(ed).toUpperCase();
+    host.replaceChildren();
+    cells.forEach(function (c) {
+      var box = el('div', 'pc'); box.appendChild(el('div', 'k', c.k)); box.appendChild(el('div', 'v', c.v));
+      var d = el('div', 'd', c.d); if (c.s === 1) d.style.color = C.red; else if (c.s === -1) d.style.color = C.green; box.appendChild(d);
+      if (PULSE.prev[c.id] && PULSE.prev[c.id] !== c.v) box.classList.add('flash');
+      PULSE.prev[c.id] = c.v; host.appendChild(box);
+    });
+    var ts = [j && j.updated, gpu && gpu.updated].map(function (x) { return Date.parse(x); }).filter(function (x) { return !isNaN(x); });
+    PULSE.at = ts.length ? Math.max.apply(null, ts) : null;
+    $('pulse-label').textContent = LIVE.snapshot ? 'SNAPSHOT' : 'LIVE';
+    $('pulse-dot').classList.toggle('snap', !!LIVE.snapshot);
+    tickAge();
+  };
+  var tickAge = function () {
+    var a = $('pulse-age'); if (!a || !PULSE.at) return;
+    var s = Math.max(0, Math.round((Date.now() - PULSE.at) / 1000));
+    a.textContent = LIVE.snapshot ? d3.utcFormat('%-d %b %H:%M UTC')(new Date(PULSE.at)).toUpperCase() : s < 90 ? 'UPDATED ' + s + 'S AGO' : 'UPDATED ' + d3.utcFormat('%H:%M UTC')(new Date(PULSE.at));
+  };
+  setInterval(tickAge, 1000);
+
+  // ---------- share: X post, copy link, card image ----------
+  (function () {
+    if (!$('share-x')) return;
+    if (/^\/e\//.test(location.pathname) || !/^https?:/.test(location.protocol)) { $('sharebar').hidden = true; return; }
+    var p2 = function (n) { return String(n).padStart(2, '0'); };
+    var shareUrl = function () { var d = new Date(); return location.origin + '/s/' + d.getUTCFullYear() + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + '-' + p2(d.getUTCHours()) + p2(d.getUTCMinutes()); };
+    var shareText = function () {
+      var t = 'AI Credit Stress Index, ' + fmtShort(ED.as_of) + ' reading: debt ' + IDX.Fb.toLowerCase() + ' at ' + IDX.Fi + ', GPUs ' + IDX.Ab.toLowerCase() + ' at ' + IDX.Ai + '. Gap ' + gapText() + ': ' + IDX.state.toLowerCase() + '.';
+      var pm = LIVE.data && LIVE.data.polymarket && LIVE.data.polymarket.markets && LIVE.data.polymarket.markets[0];
+      if (pm && !LIVE.snapshot) t += '\n\nLive: Polymarket gives ' + Math.round(pm.yes * 100) + '% odds that CoreWeave announces bankruptcy by end-' + String(pm.deadline).slice(0, 4) + '.';
+      return t;
+    };
+    $('share-x').addEventListener('click', function () {
+      window.open('https://x.com/intent/post?text=' + encodeURIComponent(shareText()) + '&url=' + encodeURIComponent(shareUrl()), '_blank', 'noopener');
+    });
+    $('share-copy').addEventListener('click', function () {
+      var b = this, u = shareUrl();
+      var done = function () { b.textContent = 'Link copied'; setTimeout(function () { b.textContent = 'Copy link'; }, 1800); };
+      var legacy = function () { var ta = el('textarea'); ta.value = u; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, legacy); else legacy();
+    });
+  })();
   var spark = function (host, pts, color, fmt, opts) {
     host.replaceChildren();
     if (!pts || pts.length < 2) return;
@@ -1404,6 +1510,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     if (any) { showLiveBoard(); stampUpdated(j.updated); drawLiveSparks(); }
     LIVE.tick = tick;
     if (tick.length || LIVE.cdsTick) renderTicker((LIVE.cdsTick || []).concat(tick).concat(TICK_BASE));
+    renderPulse();
   };
   // Loader: same-origin API; falls back to an embedded, clearly labelled snapshot (used by offline previews only).
   var SNAP = window.ACSI_SNAPSHOT || null;
@@ -1462,6 +1569,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     link(note, 'DTCC SEC dashboard ↗', j.source_url);
     drawCdsSparks();
     if (LIVE.cdsTick) renderTicker(LIVE.cdsTick.concat(LIVE.tick || []).concat(TICK_BASE));
+    renderPulse();
   };
   (function () {
     var load = function () { getLive('/api/cds', renderCds); };
@@ -1470,7 +1578,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
 
   (function () {
     var load = function () { getLive('/api/live', renderLive); };
-    load(); setInterval(load, 120000);
+    load(); setInterval(load, 60000);
   })();
 
   (function () {
@@ -1481,7 +1589,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       if (!j || j.median_usd_per_gpu_hr == null || !Array.isArray(j.sources) || !j.sources.length) return;
       var med = Number(j.median_usd_per_gpu_hr);
       if (!isFinite(med)) return;
-      card.hidden = false; showLiveBoard();
+      card.hidden = false; showLiveBoard(); LIVE.gpu = j; renderPulse();
       $('lv-num').textContent = '$' + med.toFixed(2);
       $('lv-n').textContent = String(j.sources.length);
       var src = $('lv-src'); src.replaceChildren();
@@ -1496,7 +1604,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     };
     var load = function () { getLive('/api/gpu', render); };
     load();
-    setInterval(load, 120000);
+    setInterval(load, 60000);
   })();
 
   // ---------- data download ----------

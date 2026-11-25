@@ -1,0 +1,10 @@
+{
+  "name": "ai-credit-stress-index",
+  "private": true,
+  "description": "AI Credit Stress Index: static site plus Vercel functions for live data and the share card.",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "satori": "0.63.2"
+  }
+}
