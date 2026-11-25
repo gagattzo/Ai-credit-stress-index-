@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#09090a">
+<title>AI Credit Stress Index</title>
+<meta name="description" content="Where the stress in AI infrastructure sits: in the debt that financed it, or in what the GPUs earn. Preview edition, data to 24 Nov 2026.">
+<meta property="og:title" content="AI Credit Stress Index">
+<meta property="og:description" content="Financing stress 57 (Stressed) · GPU asset stress 15 (Calm) · Gap +41: the stress sits in the debt, not the GPUs.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AI Credit Stress Index">
+<meta name="twitter:description" content="Financing stress 57 · GPU asset stress 15 · Gap +41. Where the stress in AI infrastructure sits.">
+<meta name="twitter:image" content="/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111114'/%3E%3Cpath d='M6 21 L12 15 L17 18 L26 9' stroke='%23e2773f' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='9' r='3' fill='%2345b08c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.2/dist/d3.min.js" integrity="sha384-LxfWGZyh6PaLjBRPf7NWiEYs9Mn0UQ6ZmqbLLZhxlOBBNWF2a2K0Pfc5efkrNnhQ" crossorigin="anonymous"></script>
+<script src="data.js"></script>
+<style>
+:root {
+  --bg: #09090a; --panel: #0e0e10; --card: #111114; --line: #212125; --line2: #2b2b30; --grid: #1b1b1f;
+  --fg: #ededef; --fg2: #c4c4ca; --muted: #8a8a92; --dim: #5d5d65;
+  --green: #45b08c; --amber: #d8a03d; --orange: #e2773f; --red: #e5534b;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0; color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  background: var(--bg) radial-gradient(1100px 520px at 50% -180px, #18181d 0%, rgba(9,9,10,0) 70%) no-repeat;
+  min-height: 100vh;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a { color: inherit; }
+.mono { font-family: var(--mono); }
+.wrap { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+/* nav */
+.nav { position: sticky; top: 0; z-index: 10; background: rgba(9,9,10,.78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand b { font-weight: 800; letter-spacing: .16em; font-size: 15px; }
+.brand small { font-family: var(--mono); color: var(--dim); font-size: 11px; letter-spacing: .04em; }
+.nav nav { display: flex; gap: 22px; margin-left: auto; }
+.nav nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.nav nav a:hover { color: var(--fg); }
+.btn { background: #f4f4f5; color: #0a0a0b; border: 0; border-radius: 9px; padding: 10px 15px; font: 600 14px var(--sans); text-decoration: none; white-space: nowrap; cursor: pointer; }
+.btn:hover { background: #fff; }
+@media (max-width: 560px) { .nav nav { display: none; } .nav .wrap { justify-content: space-between; gap: 12px; } .brand small { display: none; } }
+
+/* hero */
+.hero { padding: 44px 0 18px; }
+@media (max-width: 560px) { .hero { padding: 28px 0 10px; } .hide-sm { display: none; } }
+.kicker { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .02em; margin: 0 0 14px; }
+.kicker .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(69,176,140,.18); margin-right: 8px; vertical-align: 1px; }
+h1 { font-size: clamp(36px, 6.4vw, 64px); line-height: 1.02; letter-spacing: -.035em; font-weight: 700; margin: 0 0 14px; }
+.dek { font-size: clamp(16px, 2vw, 18px); color: var(--muted); max-width: 56ch; margin: 0; }
+
+/* ticker */
+.ticker { position: relative; overflow: hidden; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 26px 0 22px; background: rgba(14,14,16,.6); -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.ticker-track { display: flex; width: max-content; animation: tick 60s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker-set { display: flex; }
+.tk { display: flex; align-items: baseline; gap: 8px; padding: 11px 22px; border-right: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.tk .s { color: var(--dim); letter-spacing: .04em; }
+.tk .v { color: var(--fg); font-weight: 600; }
+.tk .c { font-weight: 600; }
+.tk .n { color: var(--dim); }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker { overflow-x: auto; } .ticker-track { animation: none; } .ticker-set + .ticker-set { display: none; } }
+
+/* board */
+.board { background: var(--panel); border: 1px solid var(--line2); border-radius: 18px; margin: 0 0 22px; overflow: hidden; }
+.board-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); min-height: 60px; }
+.board-head .tag { font-family: var(--mono); color: var(--dim); font-size: 12.5px; letter-spacing: .1em; }
+.board-head h2 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-head .pill { margin-left: auto; }
+.board-body { padding: 12px; display: grid; gap: 12px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line2); border-radius: 9px; padding: 5px 10px; font-family: var(--mono); font-size: 12px; color: var(--fg2); white-space: nowrap; flex: none; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: none; }
+.dot.glow { box-shadow: 0 0 0 3px rgba(69,176,140,.2); }
+.dot.amber { background: var(--amber); } .dot.off { background: var(--dim); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; position: relative; }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.card-head h3 { font-size: 15px; font-weight: 600; margin: 3px 0 0; letter-spacing: -.005em; }
+.big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.num { font-weight: 700; letter-spacing: -.035em; font-variant-numeric: tabular-nums; line-height: 1; }
+.xl { font-size: clamp(56px, 11vw, 84px); }
+.lg { font-size: clamp(38px, 7vw, 50px); }
+.md { font-size: 30px; }
+.of { font-family: var(--mono); font-size: 13px; color: var(--dim); }
+.chg { font-weight: 600; font-size: 17px; }
+.note { font-size: 13px; color: var(--muted); margin: 12px 0 0; line-height: 1.5; }
+.mnote { font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin: 10px 0 0; line-height: 1.55; }
+.big .bandpill { margin-left: auto; align-self: center; }
+.bandpill { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 11.5px; font-weight: 600; letter-spacing: .08em; padding: 4px 8px; border-radius: 7px; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent); }
+.headline { font-size: clamp(19px, 2.6vw, 24px); font-weight: 600; letter-spacing: -.02em; line-height: 1.3; margin: 18px 0 6px; max-width: 34ch; }
+.fact { font-size: 14px; color: var(--muted); margin: 0; max-width: 68ch; }
+.fact b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 28px; align-items: end; }
+@media (max-width: 820px) { .hero-grid { grid-template-columns: 1fr; gap: 18px; } }
+.spread { width: 100%; }
+.spread svg { display: block; width: 100%; overflow: visible; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .board-head h2 { white-space: normal; line-height: 1.25; } .big .bandpill { margin-left: 0; font-size: 10.5px; padding: 3px 6px; } }
+@media (max-width: 420px) { .card { padding: 16px 15px; } .board-body { padding: 10px; gap: 10px; } .grid2 { gap: 10px; } .board-head { padding: 12px 14px; } }
+
+.ladder { display: flex; gap: 3px; height: 26px; margin: 16px 0 6px; align-items: stretch; }
+.ladder i { flex: 1; border-radius: 2px; background: #202024; }
+.ladder i.on { box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
+.ladder i.cur { box-shadow: 0 0 10px 1px var(--glow); }
+.scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--dim); }
+.side-desc { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; line-height: 1.45; }
+
+.stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 6px 0 4px; }
+.stat .lbl { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.stat .lbl i { width: 8px; height: 8px; border-radius: 2px; }
+.stat .val { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.stat .unit { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+
+.chart { position: relative; margin-top: 12px; touch-action: pan-y; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--mono); }
+.tip { position: absolute; pointer-events: none; background: #18181c; border: 1px solid var(--line2); border-radius: 10px; padding: 8px 10px; font-family: var(--mono); font-size: 11.5px; line-height: 1.45; color: var(--fg2); max-width: 230px; box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 3; display: none; }
+.tip b { color: var(--fg); font-weight: 600; }
+.tip span { color: var(--dim); display: block; }
+.halo { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; }
+@keyframes pulse { from { transform: scale(1); opacity: .55; } to { transform: scale(3.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .halo { animation: none; opacity: .25; } }
+
+/* inputs */
+.rows { display: grid; }
+.grp { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; color: var(--dim); padding: 14px 4px 8px; border-bottom: 1px solid var(--line); }
+.grp b { color: var(--fg2); font-weight: 600; letter-spacing: .04em; }
+.row { display: grid; grid-template-columns: 46px minmax(0, 1.5fr) minmax(0, 1.2fr) 168px; grid-template-areas: "id main val score" ". meta meta meta"; column-gap: 16px; row-gap: 8px; padding: 14px 4px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.r-id { grid-area: id; font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--fg2); border: 1px solid var(--line2); border-radius: 7px; height: 26px; display: flex; align-items: center; justify-content: center; }
+.r-main { grid-area: main; min-width: 0; }
+.r-name { font-weight: 600; font-size: 15px; }
+.r-inst { font-size: 12.5px; color: var(--muted); }
+.r-val { grid-area: val; font-family: var(--mono); font-size: 13px; color: var(--fg); align-self: center; }
+.r-score { grid-area: score; display: flex; align-items: center; gap: 10px; align-self: center; }
+.r-score .mini { display: flex; gap: 2px; flex: 1; height: 16px; }
+.r-score .mini i { flex: 1; border-radius: 1.5px; background: #202024; }
+.r-score b { font-family: var(--mono); font-size: 15px; font-weight: 600; min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.r-meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+.r-meta .pill { padding: 3px 8px; font-size: 11px; }
+.r-meta a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--dim); }
+.r-meta a:hover { color: var(--fg); }
+@media (max-width: 720px) {
+  .row { grid-template-columns: 40px minmax(0, 1fr) 64px; grid-template-areas: "id main score" ". val val" ". bar bar" ". meta meta"; column-gap: 12px; }
+  .r-score { flex-direction: row-reverse; }
+  .r-score .mini { display: none; }
+  .r-bar { grid-area: bar; display: flex !important; gap: 2px; height: 10px; }
+  .r-bar i { flex: 1; border-radius: 1.5px; background: #202024; }
+}
+.r-bar { display: none; }
+.aside { font-size: 12.5px; color: var(--muted); margin: 10px 4px 2px; }
+.aside a, .tape a, .foot a, details a { text-decoration: none; border-bottom: 1px dotted var(--dim); }
+
+/* tape */
+.tape { display: grid; }
+.ev { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 4px 16px; padding: 13px 4px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.ev:last-child { border-bottom: 0; }
+.ev time { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: .04em; }
+.ev p { margin: 0; font-size: 14px; color: var(--fg2); }
+.ev .src { font-family: var(--mono); font-size: 11.5px; color: var(--dim); white-space: nowrap; }
+@media (max-width: 640px) { .ev { grid-template-columns: 58px minmax(0, 1fr); } .ev .src { grid-column: 2; white-space: normal; } }
+
+/* unknowns */
+.unk { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; counter-reset: u; }
+.unk li { counter-increment: u; display: grid; grid-template-columns: 34px minmax(0, 1fr); padding: 14px 4px; border-bottom: 1px solid var(--line); font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.unk li::before { content: counter(u, decimal-leading-zero); font-family: var(--mono); font-size: 12px; color: var(--orange); padding-top: 2px; }
+.unk li b { display: block; color: var(--fg); font-size: 14.5px; font-weight: 600; margin-bottom: 3px; }
+@media (max-width: 760px) { .unk { grid-template-columns: 1fr; } }
+
+/* method */
+details { border-radius: 12px; }
+summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--fg2); padding: 6px 4px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸"; color: var(--dim); transition: transform .15s; }
+details[open] summary::before { transform: rotate(90deg); }
+.method { padding: 4px 4px 6px; }
+.method h4 { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; color: var(--dim); font-weight: 600; margin: 24px 0 8px; text-transform: uppercase; }
+.method p, .method li { font-size: 13.5px; color: var(--fg2); max-width: 78ch; line-height: 1.55; }
+.method code { font-family: var(--mono); font-size: 12.5px; background: #18181c; border: 1px solid var(--line2); border-radius: 5px; padding: 1px 5px; color: var(--fg); }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 620px; }
+th { text-align: left; font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; padding: 9px 11px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 11px; border-bottom: 1px solid var(--line); color: var(--fg2); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+#t-anchors td:first-child, #t-loans td:first-child, #t-sens td:first-child { min-width: 170px; }
+#t-anchors td:last-child, #t-loans td:nth-child(3) { min-width: 260px; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.pos { color: var(--orange); } td.neg { color: var(--green); }
+
+.foot { border-top: 1px solid var(--line); margin-top: 8px; padding: 22px 0 48px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); line-height: 1.7; }
+.foot p { margin: 0 0 4px; max-width: 90ch; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="AI Credit Stress Index, top">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="#141417" stroke="#2b2b30"/><path d="M7 21 L12.5 15.5 L17 18.5 L25 10" stroke="#e2773f" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="10" r="2.8" fill="#45b08c"/></svg>
+      <b>ACSI</b><small>AI CREDIT STRESS INDEX</small>
+    </a>
+    <nav><a href="#inputs">Inputs</a><a href="#tape">Tape</a><a href="#method">Method</a></nav>
+    <button class="btn" id="dl" type="button">Get the data</button>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <section class="hero">
+    <p class="kicker"><span class="live"></span><span id="k-label">Preview edition</span> · data to <span id="k-asof">—</span> · method <span id="k-method">—</span> · weekly</p>
+    <h1>AI Credit Stress Index</h1>
+    <p class="dek">Where the stress in AI infrastructure sits right now: in the debt that financed the build-out, or in what the GPUs themselves earn.</p>
+  </section>
+
+  <div class="ticker" aria-label="Latest levels"><div class="ticker-track" id="ticker"></div></div>
+
+  <section class="board" aria-labelledby="b1">
+    <div class="board-head">
+      <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 22 L12 15 L17 18.5 L27 8" stroke="#ededef" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="tag">BOARD</span><h2 id="b1">Debt vs GPUs</h2>
+      <span class="pill"><i class="dot glow"></i><span id="wk">W—</span><span class="hide-sm" id="wk-d"></span></span>
+    </div>
+    <div class="board-body">
+      <article class="card">
+        <div class="card-head"><h3>Stress gap</h3><span class="pill"><i class="dot"></i>weekly</span></div>
+        <div class="hero-grid">
+          <div>
+            <div class="big"><span class="num xl" id="gap-num">—</span><span class="chg" id="gap-state">—</span></div>
+            <p class="headline" id="headline">—</p>
+            <p class="fact" id="fact"></p>
+          </div>
+          <div class="spread" id="spread" role="img"></div>
+        </div>
+        <p class="mnote">GAP = FINANCING − GPU ASSET STRESS · WITHIN ±<span id="dead">15</span> COUNTS AS ALIGNED · IT SHOWS WHERE THE STRESS SITS, NOT WHO IS WRONG</p>
+      </article>
+
+      <div class="grid2">
+        <article class="card" id="c-fin">
+          <div class="card-head"><h3>Financing stress</h3></div>
+          <div class="big"><span class="num lg" id="fin-num">—</span><span class="of">/100</span><span class="bandpill" id="fin-band">—</span></div>
+          <div class="ladder" id="fin-lad"></div>
+          <div class="scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+          <p class="side-desc">How far the most exposed AI debt has moved from calm toward the market's distress line. CoreWeave bonds, Oracle CDS, data-center loans.</p>
+        </article>
+        <article class="card" id="c-gpu">
+          <div class="card-head"><h3>GPU asset stress</h3></div>
+          <div class="big"><span class="num lg" id="ast-num">—</span><span class="of">/100</span><span class="bandpill" id="ast-band">—</span></div>
+          <div class="ladder" id="ast-lad"></div>
+          <div class="scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+          <p class="side-desc">How far GPU rents have moved from a normal return toward not covering their cost. H100 rent, Blackwell rent trend.</p>
+        </article>
+      </div>
+
+      <div class="charts">
+        <article class="card" id="c-cds">
+          <div class="card-head"><h3>Default protection got dearer</h3><span class="pill"><i class="dot"></i>5Y CDS</span></div>
+          <div class="stats" id="cds-stats"></div>
+          <div class="chart" id="cds-chart"></div>
+          <p class="mnote">Cost of insuring the debt for five years, bp per year. CoreWeave's CDS is context; the index scores its bonds.</p>
+        </article>
+        <article class="card" id="c-h100">
+          <div class="card-head"><h3>…while GPU rents rose</h3><span class="pill"><i class="dot"></i>$/GPU-hr</span></div>
+          <div class="stats" id="h100-stats"></div>
+          <div class="chart" id="h100-chart"></div>
+          <p class="mnote">Silicon Data H100 rental index (SDH100RT) against the index's calm and distress anchors, which assume 80% utilization.</p>
+        </article>
+      </div>
+      <p class="mnote" style="margin:0 6px 4px">Every dot is a dated, sourced print. Lines turn dashed across gaps of more than 60 days, where there is no print. Hollow dots are dated only to the week or month.</p>
+    </div>
+  </section>
+
+  <section class="board" id="inputs" aria-labelledby="b2">
+    <div class="board-head"><span class="tag">INPUTS</span><h2 id="b2">What's in the reading</h2><span class="pill"><i class="dot"></i><span id="live-n">—</span></span></div>
+    <div class="board-body">
+      <div class="card">
+        <p class="note" style="margin:0 4px 4px">Each input sits on its own line from calm (0) to the conventional distress level (100). Anchors were fixed before this reading and are listed in the method.</p>
+        <div class="rows" id="rows"></div>
+        <p class="aside">Is it CoreWeave, or the whole junk-bond market? Compare the <a href="https://fred.stlouisfed.org/series/BAMLH0A2HYB" target="_blank" rel="noopener noreferrer">ICE BofA single-B high-yield spread on FRED ↗</a>. It is linked rather than shown, because ICE's terms bar republishing it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="board" id="tape" aria-labelledby="b3">
+    <div class="board-head"><span class="tag">TAPE</span><h2 id="b3">Also happening, not scored</h2><span class="pill"><i class="dot amber"></i>events</span></div>
+    <div class="board-body">
+      <div class="card">
+        <p class="note" style="margin:0 4px 4px">Market access matters, but a count of headlines isn't a reliable statistic, so these stay out of the score.</p>
+        <div class="tape" id="events"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="board" id="unknowns" aria-labelledby="b4">
+    <div class="board-head"><span class="tag">RISK</span><h2 id="b4">What we don't know</h2><span class="pill"><i class="dot amber"></i>10 open</span></div>
+    <div class="board-body">
+      <div class="card">
+        <p class="note" style="margin:0 4px 4px">The weak points a credit PM would raise, stated up front.</p>
+        <ol class="unk">
+          <li><div><b>These are the weakest links, picked with hindsight.</b>The debt inputs were chosen in November 2026 because they were already under strain. This is not an average of AI credit: Microsoft, Alphabet, Amazon and Meta corporate debt is out of scope.</div></li>
+          <li><div><b>Financing is partly an Oracle index.</b>Two of the three debt inputs are Oracle: its own default protection, and loans on campuses Oracle leases.</div></li>
+          <li><div><b>Loan prices are press-reported quotes and expectations, not trade records.</b>"Below mid-80s" and "over 90" are words, taken at the bound. Healthy loans near par never make the news, so this input leans toward stress. SocGen's single "over 90" quote is counted for two loans, which lowers the score; the sensitivity table shows it counted once.</div></li>
+          <li><div><b>The utilization assumption is the biggest judgment call.</b>GPU anchors assume GPUs are rented 80% of the time. Other choices move the gap a lot; the sensitivity table shows by how much. Changing one call at a time, the gap stays above the aligned band in every case tested, but 70% utilization together with no Blackwell input brings it to about zero.</div></li>
+          <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
+          <li><div><b>GPU price indices disagree.</b>Ornn and Silicon Data are close on H100 today but have diverged sharply at times this autumn, and still differ widely on Blackwell. This index uses Silicon Data; Ornn would lower the gap (sensitivity table).</div></li>
+          <li><div><b>Some of the data is licensed.</b>This preview uses levels reported by named outlets and public index pages. A public launch needs redistribution permission for CDS and GPU index values, including the charts.</div></li>
+          <li><div><b>No history yet.</b>There is no back-filled index line, because that would claim data that didn't exist. The weekly series starts with the first live edition; the charts show raw prints only.</div></li>
+          <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it is not a pure measure of default risk.</div></li>
+          <li><div><b>Two inputs are at their limits.</b>CoreWeave is past the distress line, so it scores 100 however far it widens; the Blackwell trend is rising, so it scores 0 however fast. Leave both out and the gap falls into the aligned band.</div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="board" id="method" aria-labelledby="b5">
+    <div class="board-head"><span class="tag">METHOD</span><h2 id="b5">v0.1 · anchors, formulas, rules</h2></div>
+    <div class="board-body">
+      <div class="card">
+        <details>
+          <summary>Show the method and the sensitivity table</summary>
+          <div class="method">
+            <h4>Formula</h4>
+            <p>Each input <i>x</i> gets a score <code>s = 100 × (x − calm) / (distress − calm)</code>, clipped to 0–100. The same formula works when lower is worse (loan prices, rents), because then the distress anchor sits below the calm one.</p>
+            <p>Financing stress is the plain average of the live debt scores. GPU asset stress is the plain average of the live GPU scores. The two are never blended into one number, since averaging would erase the very divergence the index exists to show. Stress gap = financing − asset.</p>
+            <p>Bands: 0–24 Calm, 25–49 Elevated, 50–74 Stressed, 75–100 Distressed, assigned from unrounded values. A score of 100 is always shown with how far past the distress line the input is.</p>
+            <h4>Anchors and staleness windows</h4>
+            <p>Both spread inputs share one distress line, 1,000 bp, the standard definition of distressed debt: CoreWeave's bond spread over Treasuries and Oracle's CDS premium. Loans run from 98 (calm) to 80, the leveraged-loan market's distressed borderline. H100 anchors are widely cited rental thresholds for roughly a 10% return and for losing money, divided by an assumed 80% utilization. The GPU inputs use Silicon Data's indices, which are steadier and have the longer public history; Ornn's transaction-based index is the cross-check, and the sensitivity table shows the gap on Ornn.</p>
+            <div class="tw"><table aria-label="Anchors per input"><thead><tr><th>Input</th><th class="n">Calm (0)</th><th class="n">Distress (100)</th><th class="n">Max age, days</th><th>Evidence</th><th>Notes</th></tr></thead><tbody id="t-anchors"></tbody></table></div>
+            <p>Evidence grades: A, a public transaction record; B, a licensed or index-provider value; C, a named outlet reporting a trade or quote; D, a named outlet reporting an expected level or a one-sided bound. Older than its window, an input is excluded and the others are re-averaged. Financing needs at least two of its three inputs live; GPU stress needs the H100 input live. Nothing is filled in, and a missing loan print is never assumed to be at par. This preview edition uses data to Tuesday 24 Nov; regular editions will use Friday closes.</p>
+            <h4>Loan prints behind the median</h4>
+            <div class="tw"><table aria-label="Loan prints"><thead><tr><th>Facility</th><th>Reported level</th><th>Kind</th><th>Date</th><th>Source</th></tr></thead><tbody id="t-loans"></tbody></table></div>
+            <h4>How much the gap depends on the judgment calls</h4>
+            <div class="tw"><table aria-label="Sensitivity of the gap"><thead><tr><th>If instead…</th><th class="n">Financing</th><th class="n">GPU assets</th><th class="n">Gap</th><th class="n">Change</th></tr></thead><tbody id="t-sens"></tbody></table></div>
+            <h4>Rules that keep it honest</h4>
+            <ul>
+              <li>Anchors are frozen for 52 weekly readings. Any change to inputs, anchors, windows or bands needs a new method version, with old and new published side by side for four weeks.</li>
+              <li>No trading-signal claims before 52 live weeks.</li>
+              <li>Every judgment call is in the sensitivity table, with its effect on the gap.</li>
+              <li>Published values are never silently revised; corrections are dated and show old and new.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>Levels come from press reports and public index pages; each one links to its source. Not investment advice.</p>
+    <p>Disclosure: the publisher may hold positions or business interests related to instruments referenced on this page.</p>
+    <p>ACSI · <span id="f-ed">preview edition</span></p>
+  </footer>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<script>
+(function () {
+  'use strict';
+  var D = window.ACSI_DATA;
+  if (!D || !window.d3) { document.getElementById('headline').textContent = 'The data didn’t load. Refresh to try again.'; return; }
+  var ED = D.edition[0];
+  var DAY = 864e5;
+  var asOf = new Date(ED.as_of + 'T00:00:00Z');
+  var C = { green: '#45b08c', amber: '#d8a03d', orange: '#e2773f', red: '#e5534b', dim: '#5d5d65', fg: '#ededef' };
+  var BAND_C = { Calm: C.green, Elevated: C.amber, Stressed: C.orange, Distressed: C.red };
+  var band = function (s) { return s < 25 ? 'Calm' : s < 50 ? 'Elevated' : s < 75 ? 'Stressed' : 'Distressed'; };
+  var posColor = function (p) { return BAND_C[band(p)]; };
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  var fmtDate = function (s) { return s ? d3.utcFormat('%-d %b %Y')(new Date(String(s).slice(0, 10) + 'T00:00:00Z')) : '—'; };
+  var fmtShort = function (s) { return s ? d3.utcFormat('%-d %b')(new Date(String(s).slice(0, 10) + 'T00:00:00Z')) : '—'; };
+  var safeUrl = function (u) { return typeof u === 'string' && /^https?:\/\//.test(u) ? u : null; };
+  var link = function (parent, text, url) {
+    var u = safeUrl(url);
+    if (u) { var a = el('a', null, text); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; parent.appendChild(a); }
+    else parent.appendChild(document.createTextNode(text));
+  };
+  var minus = function (s) { return String(s).replace(/^-/, '−'); };
+
+  // ---------- calculations (method v0.1) ----------
+  var loanMedian = (function () {
+    var live = D.loan_prints.filter(function (l) { return (asOf - new Date(l.date + 'T00:00:00Z')) / DAY <= 56; });
+    var p = live.map(function (l) { return Number(l.price); }).sort(function (a, b) { return a - b; });
+    var n = p.length;
+    var median = n === 0 ? null : (n % 2 ? p[(n - 1) / 2] : (p[n / 2 - 1] + p[n / 2]) / 2);
+    return { facilities: n, median: median, latest_date: live.map(function (l) { return l.date; }).sort().pop() || null };
+  })();
+
+  var scores = D.inputs.map(function (r) {
+    var raw = r.raw === null || r.raw === undefined || r.raw === '' ? null : Number(r.raw);
+    var obs = r.obs_date, shown = r.shown;
+    if (r.id === 'F3') {
+      raw = loanMedian.median; obs = loanMedian.latest_date;
+      shown = raw !== null ? raw + '¢ median of ' + loanMedian.facilities + ' facilities' : 'No print in window';
+    }
+    var calm = Number(r.calm), distress = Number(r.distress);
+    var age = obs ? Math.round((asOf - new Date(obs + 'T00:00:00Z')) / DAY) : null;
+    var status = raw === null || age === null || age > Number(r.window_days) ? 'excluded' : age <= Number(r.fresh_days) ? 'fresh' : 'carried';
+    var unclipped = raw === null ? null : (100 * (raw - calm)) / (distress - calm);
+    var score = unclipped === null ? null : Math.max(0, Math.min(100, unclipped));
+    var beyond = raw === null ? 0 : distress > calm ? raw - distress : distress - raw;
+    return {
+      id: r.id, side: r.side, order: Number(r.order), name: r.name, instrument: r.instrument, raw: raw, unit: r.unit, shown: shown,
+      obs_date: obs, age_days: age, status: status, score_exact: score, score_int: score === null ? null : Math.round(score),
+      band: score === null ? null : band(score), beyond_distress: score === 100 ? Math.round(beyond * 10) / 10 : 0,
+      grade: r.grade, source: r.source, url: r.url,
+    };
+  });
+
+  var IDX = (function () {
+    var dead = Number(ED.dead_band);
+    var live = function (side) { return scores.filter(function (r) { return r.side === side && r.status !== 'excluded'; }); };
+    var fin = live('financing'), ast = live('asset');
+    var mean = function (a) { return a.reduce(function (t, r) { return t + r.score_exact; }, 0) / a.length; };
+    var F = fin.length >= 2 ? mean(fin) : null;
+    var A = ast.some(function (r) { return r.id === 'A1'; }) ? mean(ast) : null;
+    var G = F !== null && A !== null ? F - A : null;
+    return {
+      F: F, A: A, G: G, dead: dead,
+      Fi: F === null ? null : Math.round(F), Ai: A === null ? null : Math.round(A), Gi: G === null ? null : Math.round(G),
+      Fb: F === null ? 'Insufficient data' : band(F), Ab: A === null ? 'Insufficient data' : band(A),
+      state: G === null ? 'Insufficient data' : G >= dead ? 'Stress sits in the debt' : G <= -dead ? 'Stress sits in the GPUs' : 'Aligned',
+      finLive: fin.length, astLive: ast.length,
+    };
+  })();
+
+  var input = function (id) { return D.inputs.find(function (r) { return r.id === id; }); };
+  var seriesPts = function (key) {
+    return D.series.filter(function (r) { return r.series === key; })
+      .map(function (r) { return Object.assign({}, r, { value: Number(r.value), t: new Date(r.date + 'T00:00:00Z') }); })
+      .sort(function (a, b) { return a.t - b.t; });
+  };
+  var gapText = function () { return IDX.Gi === null ? '—' : (IDX.Gi > 0 ? '+' : IDX.Gi < 0 ? '−' : '') + Math.abs(IDX.Gi); };
+
+  // ---------- header, hero ----------
+  $('k-label').textContent = ED.label; $('k-asof').textContent = fmtDate(ED.as_of); $('k-method').textContent = ED.method;
+  $('f-ed').textContent = ED.label.toLowerCase() + ' · data to ' + fmtDate(ED.as_of) + ' · method ' + ED.method;
+  $('wk').textContent = 'W' + d3.utcFormat('%V')(asOf); $('wk-d').textContent = '· ' + fmtShort(ED.as_of).toUpperCase();
+  $('dead').textContent = ED.dead_band;
+  $('gap-num').textContent = gapText();
+  var st = $('gap-state');
+  st.textContent = IDX.state;
+  st.style.color = IDX.state === 'Aligned' || IDX.G === null ? C.dim : C.orange;
+  $('headline').textContent = {
+    'Stress sits in the debt': 'Credit markets are pricing more stress than GPU rents show.',
+    'Stress sits in the GPUs': 'GPU rents are weakening faster than credit markets are pricing.',
+    'Aligned': 'Credit stress and GPU rents are telling the same story.',
+  }[IDX.state] || 'Not enough fresh inputs for a reading this week.';
+  (function () {
+    var f1 = input('F1'), a1 = input('A1'), p = $('fact');
+    p.append('Same day, ' + fmtShort(f1.obs_date) + ': CoreWeave’s 2032 bonds traded as low as ');
+    p.appendChild(el('b', null, f1.price + '¢'));
+    p.append(', their lowest since issue, while the H100 rental index reached ');
+    p.appendChild(el('b', null, '$' + Number(a1.raw).toFixed(2)));
+    p.append(' an hour, its highest since at least January 2025.');
+  })();
+
+  var sideCard = function (pre, v, b) {
+    $(pre + '-num').textContent = v === null ? '—' : String(Math.round(v));
+    var bp = $(pre + '-band'); bp.textContent = b.toUpperCase(); bp.style.color = BAND_C[b] || C.dim;
+    var lad = $(pre + '-lad'); lad.replaceChildren();
+    var n = 20, last = -1;
+    for (var i = 0; i < n; i += 1) {
+      var t = el('i'); var mid = (i + 0.5) * (100 / n);
+      if (v !== null && mid <= v) { t.className = 'on'; t.style.background = posColor(mid); last = i; }
+      lad.appendChild(t);
+    }
+    if (last >= 0) { var cur = lad.children[last]; cur.classList.add('cur'); cur.style.setProperty('--glow', posColor((last + 0.5) * 5) + '88'); }
+    lad.setAttribute('role', 'img'); lad.setAttribute('aria-label', 'Score ' + (v === null ? 'unavailable' : Math.round(v)) + ' of 100, ' + b);
+  };
+  sideCard('fin', IDX.F, IDX.Fb);
+  sideCard('ast', IDX.A, IDX.Ab);
+
+  // ---------- ticker ----------
+  (function () {
+    var f1 = input('F1'), a2 = scores.find(function (r) { return r.id === 'A2'; });
+    var chgItem = function (key, sym, fmt, unit, upIsStress) {
+      var p = seriesPts(key); var l = p[p.length - 1], pr = p[p.length - 2];
+      var d = l && pr ? l.value - pr.value : null;
+      return { s: sym, v: fmt(l.value) + unit, c: d === null ? null : (d >= 0 ? '▲ ' : '▼ ') + fmt(Math.abs(d)), cc: d === null ? null : ((d > 0) === upIsStress ? C.red : C.green), n: 'vs ' + fmtShort(pr && pr.date).toUpperCase() };
+    };
+    var items = [
+      { s: 'CRWV 9⅝ 2032', v: f1.price + '¢', c: 'LOW SINCE ISSUE', cc: C.red, n: fmtShort(f1.obs_date).toUpperCase() },
+      { s: 'CRWV 2032 SPRD', v: '+' + d3.format(',.0f')(f1.raw) + ' bp', c: 'PAST 1,000', cc: C.red },
+      chgItem('crwv', 'CRWV 5Y CDS', d3.format(',.0f'), ' bp', true),
+      chgItem('orcl', 'ORCL 5Y CDS', d3.format(',.0f'), ' bp', true),
+      { s: 'DC LOANS MED', v: loanMedian.median + '¢', n: loanMedian.facilities + ' FACILITIES' },
+      chgItem('h100', 'H100 RENT', function (x) { return '$' + x.toFixed(2); }, '/hr', false),
+      { s: 'B200 RENT ~26W', v: (a2.raw > 0 ? '+' : '') + a2.raw + '%', c: a2.raw > 0 ? '▲' : '▼', cc: a2.raw > 0 ? C.green : C.red },
+      { s: 'ACSI FIN', v: String(IDX.Fi), c: IDX.Fb.toUpperCase(), cc: BAND_C[IDX.Fb] },
+      { s: 'ACSI GPU', v: String(IDX.Ai), c: IDX.Ab.toUpperCase(), cc: BAND_C[IDX.Ab] },
+      { s: 'ACSI GAP', v: gapText(), c: IDX.state.toUpperCase(), cc: IDX.state === 'Aligned' ? C.dim : C.orange },
+    ];
+    var track = $('ticker');
+    for (var k = 0; k < 2; k += 1) {
+      var set = el('div', 'ticker-set'); if (k) set.setAttribute('aria-hidden', 'true');
+      items.forEach(function (it) {
+        var t = el('div', 'tk');
+        t.appendChild(el('span', 's', it.s)); t.appendChild(el('span', 'v', it.v));
+        if (it.c) { var c = el('span', 'c', it.c); c.style.color = it.cc; t.appendChild(c); }
+        if (it.n) t.appendChild(el('span', 'n', it.n));
+        set.appendChild(t);
+      });
+      track.appendChild(set);
+    }
+  })();
+
+  // ---------- chart stats ----------
+  (function () {
+    var stat = function (parent, color, label, value, unit, chg, chgColor) {
+      var s = el('div', 'stat');
+      var l = el('div', 'lbl'); var sw = el('i'); sw.style.background = color; l.append(sw, label); s.appendChild(l);
+      var v = el('div', 'val'); v.appendChild(el('span', 'num md', value)); if (unit) v.appendChild(el('span', 'unit', unit));
+      if (chg) { var c = el('span', 'chg', chg); c.style.color = chgColor; c.style.fontSize = '14px'; v.appendChild(c); }
+      s.appendChild(v); parent.appendChild(s);
+    };
+    var last2 = function (k) { var p = seriesPts(k); return [p[p.length - 2], p[p.length - 1]]; };
+    var cw = last2('crwv'), oc = last2('orcl'), h = last2('h100');
+    var f0 = d3.format(',.0f');
+    stat($('cds-stats'), C.red, 'CoreWeave', f0(cw[1].value), 'bp', '▲ ' + f0(cw[1].value - cw[0].value), C.red);
+    stat($('cds-stats'), C.amber, 'Oracle', f0(oc[1].value), 'bp', '▲ ' + f0(oc[1].value - oc[0].value), C.red);
+    var dh = h[1].value - h[0].value;
+    stat($('h100-stats'), C.green, 'H100 index · ' + fmtShort(h[1].date), '$' + h[1].value.toFixed(2), '/hr', (dh >= 0 ? '▲ $' : '▼ $') + Math.abs(dh).toFixed(2), dh >= 0 ? C.green : C.red);
+  })();
+
+  // ---------- measuring ----------
+  var ctx = document.createElement('canvas').getContext('2d');
+  var tw = function (text, font) { ctx.font = font; return ctx.measureText(text).width; };
+  var MONO = '600 11px "JetBrains Mono", ui-monospace, Menlo, monospace';
+
+  // ---------- spread: where the two stress readings sit ----------
+  var drawSpread = function () {
+    var host = $('spread'); host.replaceChildren();
+    var W = Math.max(240, host.clientWidth), H = 104;
+    var m = { l: 4, r: 4 };
+    var x = d3.scaleLinear([0, 100], [m.l, W - m.r]);
+    var svg = d3.select(host).append('svg').attr('viewBox', '0 0 ' + W + ' ' + H).attr('height', H);
+    var ty = 52;
+    [[0, 25], [25, 50], [50, 75], [75, 100]].forEach(function (s) {
+      svg.append('rect').attr('x', x(s[0]) + 1).attr('width', x(s[1]) - x(s[0]) - 2).attr('y', ty - 3).attr('height', 6).attr('rx', 2)
+        .attr('fill', posColor(s[0] + 1)).attr('opacity', 0.22);
+    });
+    svg.selectAll(null).data(d3.range(0, 101, 5)).join('line').attr('x1', function (d) { return x(d); }).attr('x2', function (d) { return x(d); })
+      .attr('y1', ty + 10).attr('y2', function (d) { return ty + (d % 25 === 0 ? 17 : 13); }).attr('stroke', '#2b2b30');
+    svg.selectAll(null).data([0, 25, 50, 75, 100]).join('text').attr('x', function (d) { return x(d); }).attr('y', ty + 32)
+      .attr('text-anchor', function (d) { return d === 0 ? 'start' : d === 100 ? 'end' : 'middle'; })
+      .attr('fill', C.dim).style('font', '500 10.5px "JetBrains Mono", ui-monospace, monospace').text(function (d) { return d; });
+    if (IDX.F === null || IDX.A === null) return;
+    var fx = x(IDX.F), ax = x(IDX.A);
+    var grad = svg.append('defs').append('linearGradient').attr('id', 'sg').attr('x1', ax < fx ? '0' : '1').attr('x2', ax < fx ? '1' : '0');
+    grad.append('stop').attr('offset', '0').attr('stop-color', posColor(IDX.A));
+    grad.append('stop').attr('offset', '1').attr('stop-color', posColor(IDX.F));
+    svg.append('rect').attr('x', Math.min(fx, ax)).attr('width', Math.max(2, Math.abs(fx - ax))).attr('y', ty - 3).attr('height', 6).attr('rx', 3).attr('fill', 'url(#sg)');
+    var close = Math.abs(fx - ax) < 96;
+    [[ax, IDX.A, 'GPU', IDX.Ab, close && ax <= fx ? 'end' : close ? 'start' : 'middle'], [fx, IDX.F, 'DEBT', IDX.Fb, close && fx < ax ? 'end' : close ? 'start' : 'middle']].forEach(function (d) {
+      var col = BAND_C[d[3]];
+      svg.append('circle').attr('class', 'halo').attr('cx', d[0]).attr('cy', ty).attr('r', 7).attr('fill', col);
+      svg.append('circle').attr('cx', d[0]).attr('cy', ty).attr('r', 7).attr('fill', '#111114').attr('stroke', col).attr('stroke-width', 2.5);
+      svg.append('circle').attr('cx', d[0]).attr('cy', ty).attr('r', 2.6).attr('fill', col);
+      var lx = Math.min(Math.max(d[0], m.l + 30), W - m.r - 30);
+      if (d[4] === 'end') lx = d[0] + 6; if (d[4] === 'start') lx = d[0] - 6;
+      var t = svg.append('text').attr('x', lx).attr('y', ty - 18).attr('text-anchor', d[4] === 'middle' ? 'middle' : d[4] === 'end' ? 'end' : 'start')
+        .style('font', '600 11.5px "JetBrains Mono", ui-monospace, monospace');
+      t.append('tspan').attr('fill', C.dim).text(d[2] + ' ');
+      t.append('tspan').attr('fill', col).text(String(Math.round(d[1])));
+    });
+    host.setAttribute('aria-label', 'GPU asset stress ' + IDX.Ai + ' and financing stress ' + IDX.Fi + ' on a 0 to 100 scale; gap ' + gapText() + ', ' + IDX.state);
+  };
+
+  // ---------- line charts ----------
+  var tip = $('tip');
+  var lineChart = function (host, o) {
+    host.replaceChildren();
+    var W = Math.max(260, host.clientWidth), H = W < 480 ? 220 : 250;
+    var series = o.series.map(function (s) { return Object.assign({}, s, { pts: seriesPts(s.key) }); });
+    var all = series.flatMap(function (s) { return s.pts.map(function (p) { return Object.assign({}, p, { label: s.label, color: s.color }); }); });
+    var tags = [];
+    series.forEach(function (s) { var l = s.pts[s.pts.length - 1]; if (l) tags.push({ v: l.value, text: o.tagFmt(l.value), fill: true, color: s.color, last: l }); });
+    (o.refs || []).forEach(function (r) { tags.push({ v: r.v, text: r.tag, fill: false, color: r.color }); });
+    var tagW = d3.max(tags, function (t) { return tw(t.text, MONO); }) + 14;
+    var m = { l: 4, r: tagW + 10, t: 14, b: 26 };
+    var vals = all.map(function (p) { return p.value; }).concat((o.refs || []).map(function (r) { return r.v; }));
+    var y = d3.scaleLinear(o.yDomain(vals), [H - m.b, m.t]).nice();
+    var xEnd = d3.utcDay.offset(asOf, 14);
+    var x = d3.scaleUtc([o.xStart, xEnd], [m.l, W - m.r]);
+    var svg = d3.select(host).append('svg').attr('viewBox', '0 0 ' + W + ' ' + H).attr('height', H).attr('role', 'img').attr('aria-label', o.aria);
+    var g = svg.append('g');
+    // tag layout (avoid overlaps)
+    tags.forEach(function (t) { t.y = y(t.v); });
+    tags.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < tags.length; i += 1) if (tags[i].y - tags[i - 1].y < 21) tags[i].y = tags[i - 1].y + 21;
+    var over = tags.length ? tags[tags.length - 1].y - (H - m.b) : 0;
+    if (over > 0) tags.forEach(function (t) { t.y -= over; });
+    // grid + y labels
+    y.ticks(4).forEach(function (v) {
+      g.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', '#1d1d21');
+      if (tags.some(function (t) { return Math.abs(t.y - y(v)) < 14; })) return;
+      g.append('text').attr('x', W - m.r + 8).attr('y', y(v) + 3.5).attr('fill', C.dim).style('font-size', '10.5px').text(o.yFmt(v));
+    });
+    // x labels
+    var every = W - m.l - m.r < 420 ? 4 : 3;
+    x.ticks(d3.utcMonth.every(every)).forEach(function (d) {
+      var px = x(d); if (px < m.l + 18 || px > W - m.r - 18) return;
+      g.append('text').attr('x', px).attr('y', H - 7).attr('text-anchor', 'middle').attr('fill', C.dim).style('font-size', '10.5px').text(d3.utcFormat('%b %y')(d));
+    });
+    g.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', H - m.b + 0.5).attr('y2', H - m.b + 0.5).attr('stroke', '#26262b');
+    // reference lines
+    (o.refs || []).forEach(function (r) {
+      g.append('line').attr('x1', m.l).attr('x2', W - m.r + 6).attr('y1', y(r.v)).attr('y2', y(r.v)).attr('stroke', r.color).attr('stroke-opacity', 0.55).attr('stroke-dasharray', '3 4');
+    });
+    // lines + points
+    var line = d3.line().x(function (d) { return x(d.t); }).y(function (d) { return y(d.value); });
+    series.forEach(function (s) {
+      var area = d3.area().x(function (d) { return x(d.t); }).y0(H - m.b).y1(function (d) { return y(d.value); });
+      var gid = 'ga-' + s.key;
+      var lg = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+      lg.append('stop').attr('offset', 0).attr('stop-color', s.color).attr('stop-opacity', 0.16);
+      lg.append('stop').attr('offset', 1).attr('stop-color', s.color).attr('stop-opacity', 0);
+      g.append('path').datum(s.pts).attr('d', area).attr('fill', 'url(#' + gid + ')');
+      for (var k = 1; k < s.pts.length; k += 1) {
+        var a = s.pts[k - 1], b = s.pts[k], long = (b.t - a.t) / DAY > 60;
+        g.append('path').datum([a, b]).attr('d', line).attr('fill', 'none').attr('stroke', s.color)
+          .attr('stroke-width', long ? 1.25 : 2).attr('stroke-dasharray', long ? '2 4' : null).attr('stroke-opacity', long ? 0.6 : 1).attr('stroke-linecap', 'round');
+      }
+      s.pts.forEach(function (p, idx) {
+        if (idx === s.pts.length - 1) return;
+        g.append('circle').attr('cx', x(p.t)).attr('cy', y(p.value)).attr('r', p.precision === 'day' ? 2.4 : 2.8)
+          .attr('fill', p.precision === 'day' ? s.color : '#111114').attr('stroke', s.color).attr('stroke-width', p.precision === 'day' ? 0 : 1.4);
+      });
+    });
+    // end tags with price lines
+    tags.forEach(function (t) {
+      var tx = W - m.r + 4, w = tw(t.text, MONO) + 12;
+      if (t.fill) {
+        var lx = x(t.last.t), ly = y(t.v);
+        g.append('line').attr('x1', lx).attr('x2', tx).attr('y1', ly).attr('y2', ly).attr('stroke', t.color).attr('stroke-width', 1.5).attr('stroke-dasharray', '2 3').attr('stroke-opacity', 0.8);
+        if (Math.abs(t.y - ly) > 1) g.append('line').attr('x1', tx).attr('x2', tx).attr('y1', ly).attr('y2', t.y).attr('stroke', t.color).attr('stroke-opacity', 0.6);
+        g.append('circle').attr('class', 'halo').attr('cx', lx).attr('cy', ly).attr('r', 4.5).attr('fill', t.color);
+        g.append('circle').attr('cx', lx).attr('cy', ly).attr('r', 4.5).attr('fill', t.color).attr('stroke', '#111114').attr('stroke-width', 1.5);
+      }
+      g.append('rect').attr('x', tx).attr('y', t.y - 9.5).attr('width', w).attr('height', 19).attr('rx', 4)
+        .attr('fill', t.fill ? t.color : '#111114').attr('stroke', t.color).attr('stroke-opacity', t.fill ? 1 : 0.7);
+      g.append('text').attr('x', tx + 6).attr('y', t.y + 3.8).attr('fill', t.fill ? '#0b0b0c' : t.color).style('font', MONO).text(t.text);
+    });
+    // crosshair + tooltip
+    var cross = g.append('line').attr('y1', m.t).attr('y2', H - m.b).attr('stroke', '#3a3a40').attr('stroke-dasharray', '2 3').style('display', 'none');
+    var ring = g.append('circle').attr('r', 5.5).attr('fill', 'none').attr('stroke-width', 2).style('display', 'none');
+    var hide = function () { cross.style('display', 'none'); ring.style('display', 'none'); tip.style.display = 'none'; };
+    svg.append('rect').attr('x', m.l).attr('y', 0).attr('width', W - m.l - m.r).attr('height', H - m.b).attr('fill', 'transparent')
+      .on('pointermove pointerdown', function (ev) {
+        var pt = d3.pointer(ev), px = pt[0], py = pt[1];
+        var best = null, bd = Infinity;
+        all.forEach(function (p) { var dd = Math.abs(x(p.t) - px) + Math.abs(y(p.value) - py) * 0.25; if (dd < bd) { bd = dd; best = p; } });
+        if (!best) return;
+        cross.attr('x1', x(best.t)).attr('x2', x(best.t)).style('display', null);
+        ring.attr('cx', x(best.t)).attr('cy', y(best.value)).attr('stroke', best.color).style('display', null);
+        tip.replaceChildren();
+        tip.appendChild(el('b', null, best.label + ' · ' + o.tipFmt(best.value)));
+        tip.appendChild(el('span', null, best.precision === 'month' ? d3.utcFormat('%b %Y')(best.t) + ' (month)' : best.precision === 'week' ? 'Week of ' + fmtDate(best.date) : fmtDate(best.date)));
+        tip.appendChild(el('span', null, best.source));
+        tip.style.display = 'block';
+        var box = host.getBoundingClientRect();
+        var left = box.left + window.scrollX + x(best.t) + 14, top = box.top + window.scrollY + y(best.value) - 64;
+        var maxL = window.scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8;
+        if (left > maxL) left = box.left + window.scrollX + x(best.t) - tip.offsetWidth - 14;
+        tip.style.left = Math.max(8, left) + 'px'; tip.style.top = Math.max(window.scrollY + 70, top) + 'px';
+      })
+      .on('pointerleave', function (ev) { if (ev.pointerType !== 'touch') hide(); });
+  };
+
+  var drawCharts = function () {
+    lineChart($('cds-chart'), {
+      aria: 'Five-year default protection spreads for CoreWeave and Oracle since October 2025, with the 1,000 bp distress line',
+      series: [{ key: 'crwv', label: 'CoreWeave', color: C.red }, { key: 'orcl', label: 'Oracle', color: C.amber }],
+      xStart: new Date('2025-10-01T00:00:00Z'),
+      yDomain: function (v) { return [0, Math.max(1100, d3.max(v) * 1.08)]; },
+      yFmt: d3.format(','), tagFmt: function (v) { return d3.format(',.0f')(v); }, tipFmt: function (v) { return d3.format(',.1f')(v) + ' bp'; },
+      refs: [{ v: 1000, tag: 'DIST 1,000', label: 'distress line', color: C.red, below: true }],
+    });
+    var a1 = input('A1');
+    lineChart($('h100-chart'), {
+      aria: 'Silicon Data H100 rental index since December 2025, with the calm anchor at $' + Number(a1.calm).toFixed(2) + ' and the distress anchor at $' + Number(a1.distress).toFixed(2),
+      series: [{ key: 'h100', label: 'H100', color: C.green }],
+      xStart: new Date('2025-10-01T00:00:00Z'),
+      yDomain: function (v) { return [d3.min(v) - 0.25, d3.max(v) + 0.25]; },
+      yFmt: function (v) { return '$' + v.toFixed(2); }, tagFmt: function (v) { return '$' + v.toFixed(2); }, tipFmt: function (v) { return '$' + v.toFixed(2) + ' / GPU-hr'; },
+      refs: [
+        { v: Number(a1.calm), tag: 'CALM ' + Number(a1.calm).toFixed(2), label: 'calm: ~10% return', color: C.green },
+        { v: Number(a1.distress), tag: 'DIST ' + Number(a1.distress).toFixed(2), label: 'distress: below cost', color: C.red },
+      ],
+    });
+  };
+
+  // ---------- inputs ----------
+  (function () {
+    var host = $('rows');
+    $('live-n').textContent = (IDX.finLive + IDX.astLive) + '/' + scores.length + ' live';
+    [['financing', 'DEBT SIDE', IDX.Fi, IDX.Fb], ['asset', 'GPU SIDE', IDX.Ai, IDX.Ab]].forEach(function (gp) {
+      var h = el('div', 'grp'); h.appendChild(el('span', null, gp[1]));
+      var hb = el('b', null, (gp[0] === 'financing' ? 'FINANCING ' : 'GPU ASSET ') + gp[2] + ' · ' + gp[3].toUpperCase()); hb.style.color = BAND_C[gp[3]]; h.appendChild(hb);
+      host.appendChild(h);
+      scores.filter(function (r) { return r.side === gp[0]; }).sort(function (a, b) { return a.order - b.order; }).forEach(function (r) {
+        var row = el('div', 'row');
+        row.appendChild(el('div', 'r-id', r.id));
+        var main = el('div', 'r-main'); main.append(el('div', 'r-name', r.name), el('div', 'r-inst', r.instrument)); row.appendChild(main);
+        row.appendChild(el('div', 'r-val', r.shown));
+        var ticks = function (cls, n) {
+          var wrap = el('div', cls);
+          for (var i = 0; i < n; i += 1) { var t = el('i'); var mid = (i + 0.5) * (100 / n); if (r.score_exact !== null && mid <= r.score_exact) t.style.background = posColor(mid); wrap.appendChild(t); }
+          return wrap;
+        };
+        var sc = el('div', 'r-score'); sc.appendChild(ticks('mini', 10));
+        var b = el('b', null, r.score_int === null ? '—' : String(r.score_int)); b.style.color = r.band ? BAND_C[r.band] : C.dim; sc.appendChild(b);
+        row.appendChild(sc);
+        row.appendChild(ticks('r-bar', 20));
+        var meta = el('div', 'r-meta');
+        var pill = el('span', 'pill'); var dot = el('i', 'dot' + (r.status === 'carried' ? ' amber' : r.status === 'excluded' ? ' off' : ''));
+        pill.append(dot, r.status === 'fresh' ? 'FRESH' : r.status === 'carried' ? 'CARRIED' : 'EXCLUDED · TOO OLD'); meta.appendChild(pill);
+        meta.appendChild(el('span', null, fmtDate(r.obs_date).toUpperCase()));
+        meta.appendChild(el('span', null, 'GRADE ' + r.grade));
+        if (r.beyond_distress > 0) {
+          var unit = r.unit === 'bp' ? ' bp' : r.unit === 'cents' ? '¢' : r.unit === '%' ? ' pts' : '';
+          var bx = el('span', null, d3.format(',.0f')(r.beyond_distress) + unit + ' PAST THE DISTRESS LINE'); bx.style.color = C.red; meta.appendChild(bx);
+        }
+        var src = el('span'); link(src, r.source + ' ↗', r.url); meta.appendChild(src);
+        row.appendChild(meta);
+        host.appendChild(row);
+      });
+    });
+  })();
+
+  // ---------- tape ----------
+  (function () {
+    var host = $('events');
+    D.context.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (r) {
+      var e = el('div', 'ev');
+      var t = el('time', null, fmtShort(r.date).toUpperCase()); t.dateTime = r.date; e.appendChild(t);
+      e.appendChild(el('p', null, r.item));
+      var s = el('span', 'src'); link(s, r.source + ' ↗', r.url); e.appendChild(s);
+      host.appendChild(e);
+    });
+  })();
+
+  // ---------- method tables ----------
+  (function () {
+    var tb = $('t-anchors');
+    var u = function (r, v) { return r.unit === 'bp' ? d3.format(',')(v) + ' bp' : r.unit === 'cents' ? v + '¢' : r.unit === '$/hr' ? '$' + Number(v).toFixed(2) : r.unit === '%' ? minus(v) + '%' : String(v); };
+    D.inputs.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (r) {
+      var tr = tb.insertRow();
+      tr.insertCell().textContent = r.name;
+      var c = tr.insertCell(); c.className = 'n'; c.textContent = u(r, r.calm);
+      var x = tr.insertCell(); x.className = 'n'; x.textContent = u(r, r.distress);
+      var w = tr.insertCell(); w.className = 'n'; w.textContent = String(r.window_days);
+      tr.insertCell().textContent = r.grade;
+      tr.insertCell().textContent = r.note;
+    });
+    var tl = $('t-loans');
+    D.loan_prints.forEach(function (r) {
+      var tr = tl.insertRow();
+      tr.insertCell().textContent = r.facility; tr.insertCell().textContent = r.price_text; tr.insertCell().textContent = r.kind;
+      var dt = tr.insertCell(); dt.textContent = fmtDate(r.date); dt.style.whiteSpace = 'nowrap';
+      link(tr.insertCell(), r.source, r.url);
+    });
+    var ts = $('t-sens'); var f = d3.format('.1f');
+    var sf = function (v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + f(Math.abs(v)); };
+    D.sensitivity.forEach(function (r) {
+      var tr = ts.insertRow();
+      tr.insertCell().textContent = r.scenario;
+      [r.financing, r.asset].forEach(function (v) { var c = tr.insertCell(); c.className = 'n'; c.textContent = f(v); });
+      var g = tr.insertCell(); g.className = 'n'; g.textContent = sf(r.gap);
+      var ch = tr.insertCell(); ch.className = 'n' + (r.change > 0 ? ' pos' : r.change < 0 ? ' neg' : ''); ch.textContent = r.change === 0 ? '0.0' : sf(r.change);
+    });
+  })();
+
+  // ---------- data download ----------
+  $('dl').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify({ edition: ED, index: { financing: IDX.F, asset: IDX.A, gap: IDX.G, state: IDX.state }, scores: scores, data: D }, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'acsi-' + ED.as_of + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // ---------- draw + redraw on width change ----------
+  var lastW = 0;
+  var drawAll = function () { lastW = document.documentElement.clientWidth; drawSpread(); drawCharts(); };
+  drawAll();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawAll);
+  var tmr;
+  window.addEventListener('resize', function () { clearTimeout(tmr); tmr = setTimeout(function () { if (document.documentElement.clientWidth !== lastW) drawAll(); }, 150); });
+  document.addEventListener('pointerdown', function (e) { if (!e.target.closest('.chart')) tip.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>
