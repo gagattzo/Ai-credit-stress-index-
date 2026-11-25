@@ -1,8 +1,9 @@
 // GET /api/live
 // Live, public market signals on AI-infrastructure credit, gathered server-side and cached briefly:
 //  - Polymarket: "CoreWeave announces bankruptcy by ...?" market ladder, with 45 days of daily history
-//  - Pendle: implied fixed rate on PT-sUSDai (USD.AI's GPU-loan-backed vault), with 45 days of history
-//  - NY Fed: SOFR, the risk-free leg of the onchain GPU credit spread
+//  - Pendle: implied fixed rate on PT-sUSDai (USD.AI's GPU-loan vault) minus PT-USDai (same protocol, same expiry, no
+//    GPU-loan exposure) = the onchain GPU-loan premium, with 45 days of history; and the vault rate over SOFR
+//  - NY Fed: SOFR
 //  - Hyperliquid HIP-3: 24/7 perpetual futures on AI-infrastructure equities
 // Every block is optional: a block that fails is null and is listed in `skipped`.
 
@@ -37,8 +38,10 @@ async function polymarket() {
   const e = Array.isArray(ev) ? ev[0] : ev;
   if (!e || !Array.isArray(e.markets)) throw new Error('no event');
   const now = Date.now();
+  const resolvedYes = e.markets.some((m) => m.closed && JSON.parse(m.outcomePrices || '[]').map(Number)[0] > 0.99);
+  if (resolvedYes) return { title: e.title, url: `https://polymarket.com/event/${PM_SLUG}`, resolved_yes: true, markets: [], history_first_market: [] };
   const markets = e.markets
-    .filter((m) => !m.closed)
+    .filter((m) => !m.closed && Date.parse(m.endDate) > now + 30 * DAY)
     .map((m) => {
       const prices = JSON.parse(m.outcomePrices || '[]').map(Number);
       const bid = num(m.bestBid), ask = num(m.bestAsk);
@@ -48,14 +51,16 @@ async function polymarket() {
       // Rough conversion of the cumulative probability into an annual default intensity and a CDS-like spread (40% recovery).
       const lambda = mid > 0 && mid < 1 ? -Math.log(1 - mid) / years : null;
       const tokens = JSON.parse(m.clobTokenIds || '[]');
+      const dl = /by ([A-Z][a-z]+ \d{1,2}, \d{4})/.exec(m.question || '');
+      const deadline = dl ? new Date(`${dl[1]} UTC`).toISOString().slice(0, 10) : new Date(end - DAY).toISOString().slice(0, 10);
       return {
-        question: m.question, end_date: (m.endDate || '').slice(0, 10), yes: r4(mid), bid, ask,
+        question: m.question, deadline, end_date: (m.endDate || '').slice(0, 10), yes: r4(mid), bid, ask,
         liquidity_usd: Math.round(num(m.liquidityNum) || 0), volume_usd: Math.round(num(m.volumeNum) || 0),
         implied_annual_default: r4(lambda), implied_spread_bp: lambda === null ? null : Math.round(lambda * 0.6 * 10000),
         token: tokens[0] || null,
       };
     })
-    .sort((a, b) => (a.end_date < b.end_date ? -1 : 1));
+    .sort((a, b) => (a.deadline < b.deadline ? -1 : 1));
   if (!markets.length) throw new Error('no open markets');
   let history = [];
   const first = markets[0];
@@ -73,26 +78,37 @@ async function polymarket() {
   };
 }
 
-// --- Pendle PT-sUSDai + SOFR -------------------------------------------------
+// --- Pendle: USD.AI vault (PT-sUSDai, GPU-loan exposure) vs plain USDai (PT-USDai), same expiry ---------------
 const PENDLE_CHAIN = 42161;
-const PENDLE_MARKET = '0xf86119a39f8654f38acbbd5488bd83f3f51983c8'; // PT-sUSDai, expiry 25 Feb 2027
+const DAYS_MIN_TO_EXPIRY = 60;
+const MIN_LIQUIDITY = 1e6;
+async function pendleHistory(address) {
+  const h = await getJSON(`https://api-v2.pendle.finance/core/v2/${PENDLE_CHAIN}/markets/${address}/historical-data?time_frame=day`);
+  const cutoff = Date.now() - 45 * DAY;
+  return (h.results || []).filter((x) => Date.parse(x.timestamp) >= cutoff).map((x) => ({ date: x.timestamp.slice(0, 10), implied_apy: r4(Number(x.impliedApy)) }));
+}
 async function pendle() {
   const list = await getJSON(`https://api-v2.pendle.finance/core/v1/${PENDLE_CHAIN}/markets/active`);
-  const mk = (list.markets || []).find((m) => (m.address || '').toLowerCase() === PENDLE_MARKET);
-  if (!mk) throw new Error('market not active');
-  const d = mk.details || {};
-  let history = [];
-  try {
-    const h = await getJSON(`https://api-v2.pendle.finance/core/v2/${PENDLE_CHAIN}/markets/${PENDLE_MARKET}/historical-data?time_frame=day`);
-    const cutoff = Date.now() - 45 * DAY;
-    history = (h.results || []).filter((x) => Date.parse(x.timestamp) >= cutoff).map((x) => ({ date: x.timestamp.slice(0, 10), implied_apy: r4(Number(x.impliedApy)) }));
-  } catch (err) { /* optional */ }
+  const ms = (list.markets || []).filter((m) => Date.parse(m.expiry) > Date.now() + DAYS_MIN_TO_EXPIRY * DAY);
+  const pick = (name) => ms.filter((m) => m.name === name).sort((a, b) => (b.details?.liquidity || 0) - (a.details?.liquidity || 0))[0];
+  const vault = pick('sUSDai');
+  if (!vault || (vault.details?.liquidity || 0) < MIN_LIQUIDITY) throw new Error('no liquid sUSDai market');
+  const plain = ms.find((m) => m.name === 'USDai' && m.expiry === vault.expiry) || null;
+  const [vh, ph] = await Promise.all([pendleHistory(vault.address).catch(() => []), plain ? pendleHistory(plain.address).catch(() => []) : Promise.resolve([])]);
+  const pmap = new Map(ph.map((x) => [x.date, x.implied_apy]));
+  const premium_history = vh.filter((x) => pmap.has(x.date)).map((x) => ({ date: x.date, bp: Math.round((x.implied_apy - pmap.get(x.date)) * 10000) }));
+  const v = Number(vault.details.impliedApy), u = plain ? Number(plain.details.impliedApy) : null;
   return {
-    name: 'PT-sUSDai', protocol: 'USD.AI on Pendle (Arbitrum)', market: PENDLE_MARKET, expiry: (mk.expiry || '').slice(0, 10),
-    implied_apy: r4(Number(d.impliedApy)), liquidity_usd: Math.round(Number(d.liquidity) || 0),
-    url: `https://app.pendle.finance/trade/markets/${PENDLE_MARKET}/swap?chain=arbitrum`, history,
+    protocol: 'USD.AI on Pendle (Arbitrum)', expiry: (vault.expiry || '').slice(0, 10),
+    vault: { name: 'PT-sUSDai', market: vault.address, implied_apy: r4(v), liquidity_usd: Math.round(vault.details.liquidity || 0), url: `https://app.pendle.finance/trade/markets/${vault.address}/swap?chain=arbitrum` },
+    plain: plain ? { name: 'PT-USDai', market: plain.address, implied_apy: r4(u), liquidity_usd: Math.round(plain.details.liquidity || 0), url: `https://app.pendle.finance/trade/markets/${plain.address}/swap?chain=arbitrum` } : null,
+    premium_bp: u === null ? null : Math.round((v - u) * 10000),
+    premium_history,
+    vault_history: vh,
   };
 }
+// APY (compounded) -> simple Act/360 rate, comparable with SOFR.
+const apyToSimple360 = (apy) => 365 * (Math.pow(1 + apy, 1 / 365) - 1) * (360 / 365);
 async function sofr() {
   const j = await getJSON('https://markets.newyorkfed.org/api/rates/secured/sofr/last/1.json');
   const r = (j.refRates || [])[0];
@@ -132,8 +148,8 @@ module.exports = async (req, res) => {
     if (r.status === 'fulfilled') out[keys[i]] = r.value;
     else { out[keys[i]] = null; out.skipped.push({ id: keys[i], reason: String(r.reason && r.reason.message ? r.reason.message : r.reason).slice(0, 80) }); }
   });
-  if (out.pendle && out.sofr && Number.isFinite(out.pendle.implied_apy)) {
-    out.onchain_gpu_credit_spread_bp = Math.round((out.pendle.implied_apy - out.sofr.rate) * 10000);
+  if (out.pendle && out.sofr && Number.isFinite(out.pendle.vault.implied_apy)) {
+    out.pendle.vault_over_sofr_bp = Math.round((apyToSimple360(out.pendle.vault.implied_apy) - out.sofr.rate) * 10000);
   }
   res.setHeader('content-type', 'application/json; charset=utf-8');
   res.setHeader('cache-control', 'public, s-maxage=120, stale-while-revalidate=600');

@@ -64,6 +64,10 @@ miners_meta = {
     "debt_url": "https://startupfortune.com/bitcoin-miners-turned-ai-landlords-now-carry-billions-in-debt-into-the-ecbs-subprime-warning/",
     "week_source": "TECHi, from Nasdaq prices (week to 20 Nov)",
     "week_url": "https://www.techi.com/bitcoin-miners-ai-data-centers-move-with-ai-stocks-not-bitcoin-iren/",
+    "compare": [
+        {"name": "Bitcoin", "note": "same week", "week": -15.3},
+        {"name": "AI hardware", "note": "average of ten AI hardware stocks tracked by TECHi", "week": -19.6},
+    ],
 }
 
 data = {
