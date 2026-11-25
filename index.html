@@ -7,12 +7,12 @@
 <title>AI Credit Stress Index</title>
 <meta name="description" content="Where the stress in AI infrastructure sits: in the debt that financed it, or in what the GPUs earn. Preview edition, data to 24 Nov 2026.">
 <meta property="og:title" content="AI Credit Stress Index">
-<meta property="og:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Financing stress 57 · GPU asset stress 15 · Gap +41.">
+<meta property="og:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Financing stress 58 · GPU asset stress 15 · Gap +43.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="AI Credit Stress Index">
-<meta name="twitter:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Gap +41.">
+<meta name="twitter:description" content="A year ago the stress in AI infrastructure was in the GPUs. Now it's in the debt. Gap +43.">
 <meta name="twitter:image" content="/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111114'/%3E%3Cpath d='M6 21 L12 15 L17 18 L26 9' stroke='%23e2773f' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='9' r='3' fill='%2345b08c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -484,7 +484,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
           <li><div><b>The utilization assumption is the biggest judgment call.</b>GPU anchors assume GPUs are rented 80% of the time. Other choices move the gap a lot; the sensitivity table shows by how much. Changing one call at a time, the gap stays above the aligned band in every case tested, but 70% utilization together with no Blackwell input brings it to about zero.</div></li>
           <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
           <li><div><b>GPU price indices disagree.</b>Ornn and Silicon Data are close on H100 today but have diverged sharply at times this autumn, and still differ widely on Blackwell. This index uses Silicon Data; Ornn would lower the gap (sensitivity table).</div></li>
-          <li><div><b>Some of the data is licensed.</b>This preview uses levels reported by named outlets and public index pages. A public launch needs redistribution permission for CDS and GPU index values, including the charts.</div></li>
+          <li><div><b>Some of the data is licensed.</b>The Oracle CDS input now comes from DTCC's free public trade data, which the SEC requires to be published without a fee. The GPU index values (Silicon Data) and the press-reported history in the charts are licensed by their providers: a public launch needs redistribution permission for those.</div></li>
           <li><div><b>The history is reconstructed, not official.</b>The flip chart rebuilds each month from dated prints with the frozen anchors, but with only some inputs: no loan prices, no Blackwell trend, and CoreWeave's CDS standing in for its bonds. The official weekly series starts with this edition, and nothing will be back-filled into it.</div></li>
           <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it is not a pure measure of default risk.</div></li>
           <li><div><b>Two inputs are at their limits.</b>CoreWeave is past the distress line, so it scores 100 however far it widens; the Blackwell trend is rising, so it scores 0 however fast. Leave both out and the gap falls into the aligned band.</div></li>
@@ -512,6 +512,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
             <div class="tw"><table aria-label="Loan prints"><thead><tr><th>Facility</th><th>Reported level</th><th>Kind</th><th>Date</th><th>Source</th></tr></thead><tbody id="t-loans"></tbody></table></div>
             <h4>How much the gap depends on the judgment calls</h4>
             <div class="tw"><table aria-label="Sensitivity of the gap"><thead><tr><th>If instead…</th><th class="n">Financing</th><th class="n">GPU assets</th><th class="n">Gap</th><th class="n">Change</th></tr></thead><tbody id="t-sens"></tbody></table></div>
+            <h4>Changes before first publication</h4>
+            <p>Oracle's CDS input (F2) now comes from DTCC's public trade data, the median of the day's on-the-run 5-year trades, instead of a press report. Evidence grade C → A. Effect on this edition: 327.9 bp (press, 20 Nov) → 365 bp (tape, 24 Nov); financing 56.6 → 58.0; gap +41.3 → +42.6. The sensitivity table shows the press-report version.</p>
             <h4>Rules that keep it honest</h4>
             <ul>
               <li>Anchors are frozen for 52 weekly readings. Any change to inputs, anchors, windows or bands needs a new method version, with old and new published side by side for four weeks.</li>
@@ -1453,7 +1455,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     note.append('Daily median of new on-the-run 5-year trades reported to DTCC under the SEC\u2019s swap rules (cancelled trades removed, corrections applied; DTCC is one of two repositories, so some trades are missing). Quoted spreads are used as reported; upfront prices are converted with a simplified ISDA-style model (flat hazard, 40% recovery). ');
     if (j.calibration) note.append('Model check on ' + fmtShort(j.calibration.date) + ': ' + j.calibration.n + ' trades reported both a quote and an upfront, and the model reproduces the quote with a median error of ' + j.calibration.median_abs_error_bp + ' bp. ');
     note.append('Days with few trades are noisy. ');
-    if (same) note.append('Cross-check: the index uses ' + f2.raw + ' bp for Oracle on ' + fmtShort(f2.obs_date) + ' from a press report; the tape gives ' + f0(same.bp) + ' bp that day (' + same.trades + ' trades). ');
+    if (/DTCC/.test(f2.source)) note.append('The index\u2019s Oracle input comes from this tape: ' + f2.raw + ' bp on ' + fmtShort(f2.obs_date) + '. ');
+    else if (same) note.append('Cross-check: the index uses ' + f2.raw + ' bp for Oracle on ' + fmtShort(f2.obs_date) + ' from a press report; the tape gives ' + f0(same.bp) + ' bp that day (' + same.trades + ' trades). ');
     link(note, 'DTCC SEC dashboard ↗', j.source_url);
     drawCdsSparks();
     if (LIVE.cdsTick) renderTicker(LIVE.cdsTick.concat(LIVE.tick || []).concat(TICK_BASE));

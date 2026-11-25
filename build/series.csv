@@ -20,6 +20,7 @@ orcl,Oracle 5Y CDS,2026-10-19,day,315,bp,med,Wealth Professional citing CNBC,htt
 orcl,Oracle 5Y CDS,2026-11-02,day,292,bp,med,TIKR via Yahoo Finance,https://finance.yahoo.com/markets/stocks/articles/oracle-credit-default-swaps-hit-165226586.html,
 orcl,Oracle 5Y CDS,2026-11-06,day,298,bp,med,FourWeekMBA citing CNBC,https://fourweekmba.com/ai-coreweave-cds-is-8x-nvidias-139bp-as-credit-prices-ai-risk/,
 orcl,Oracle 5Y CDS,2026-11-20,day,327.9,bp,high,"Wallstreetcn via Longbridge, citing ICE",https://longbridge.com/en/news/306300698,
+orcl,Oracle 5Y CDS,2026-11-24,day,365,bp,high,DTCC public trade data (median of 24 trades),https://pddata.dtcc.com/ppd/secdashboard,
 h100,H100 rent (SDH100RT),2025-12-09,day,2.0,$/hr,high,Silicon Data,https://www.silicondata.com/blog/h100-price-spike,
 h100,H100 rent (SDH100RT),2026-01-06,day,2.2,$/hr,high,Silicon Data,https://www.silicondata.com/blog/h100-price-spike,
 h100,H100 rent (SDH100RT),2026-04-01,day,2.63,$/hr,high,Silicon Data,https://www.silicondata.com/blog/h100-index-may-2026-two-tiers-two-regimes,
