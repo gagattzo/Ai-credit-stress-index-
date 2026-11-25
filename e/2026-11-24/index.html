@@ -202,6 +202,25 @@ h1 { font-size: clamp(36px, 6.4vw, 64px); line-height: 1.02; letter-spacing: -.0
 .lv-row b { font-family: var(--mono); text-align: right; font-weight: 600; }
 @media (max-width: 560px) { .lv-row { grid-template-columns: minmax(0, 1fr) 72px; row-gap: 2px; } .lv-row .k { grid-column: 1; grid-row: 2; } .lv-row b { grid-column: 2; grid-row: 1; } }
 
+.g-live { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .g-live { grid-template-columns: 1fr; } }
+.spark { margin: 12px 0 4px; }
+.spark svg { display: block; width: 100%; overflow: visible; }
+.hl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 96px 150px; gap: 12px; padding: 10px 2px; border-top: 1px solid var(--line); align-items: center; }
+.hl .sym { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.hl .nm { color: var(--muted); font-size: 13px; }
+.hl .px { font-family: var(--mono); text-align: right; font-size: 14px; color: var(--fg); }
+.hl .ch { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-family: var(--mono); font-weight: 600; font-size: 14px; }
+.hl .ch i { display: block; height: 8px; border-radius: 2px; }
+@media (max-width: 560px) { .hl { grid-template-columns: 56px minmax(0, 1fr) 110px; } .hl .px { display: none; } }
+
+.cds { display: grid; grid-template-columns: 120px 130px minmax(0, 1fr) 230px; gap: 14px; padding: 12px 2px; border-top: 1px solid var(--line); align-items: center; }
+.cds b { font-size: 15px; font-weight: 600; }
+.cds .lv-bp { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+.cds .meta { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+.cds .mini svg { display: block; width: 100%; height: 30px; overflow: visible; }
+@media (max-width: 640px) { .cds { grid-template-columns: minmax(0, 1fr) 110px; } .cds .mini { grid-column: 1 / -1; } .cds .meta { grid-column: 1 / -1; } }
+
 /* cite */
 .cite { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
 .cite code { flex: 1 1 320px; display: block; font-family: var(--mono); font-size: 12.5px; color: var(--fg2); background: #0c0c0e; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; line-height: 1.55; overflow-wrap: anywhere; }
@@ -287,7 +306,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="#141417" stroke="#2b2b30"/><path d="M7 21 L12.5 15.5 L17 18.5 L25 10" stroke="#e2773f" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="10" r="2.8" fill="#45b08c"/></svg>
       <b>ACSI</b><small>AI CREDIT STRESS INDEX</small>
     </a>
-    <nav><a href="#c-flip">The flip</a><a href="#borrowers">Borrowers</a><a href="#inputs">Inputs</a><a href="#method">Method</a></nav>
+    <nav><a href="#c-flip">The flip</a><a href="#live">Live</a><a href="#borrowers">Borrowers</a><a href="#inputs">Inputs</a><a href="#method">Method</a></nav>
     <button class="btn" id="dl" type="button">Get the data</button>
   </div>
 </header>
@@ -369,13 +388,48 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
           <p class="mnote">Silicon Data H100 rental index (SDH100RT) against the index's calm and distress anchors, which assume 80% utilization.</p>
         </article>
       </div>
+      <p class="mnote" style="margin:0 6px 4px">Every dot is a dated, sourced print. Lines turn dashed across gaps of more than 60 days, where there is no print. Hollow dots are dated only to the week or month.</p>
+    </div>
+  </section>
+
+  <section class="board" id="live" aria-labelledby="b8" hidden>
+    <div class="board-head"><span class="tag">LIVE</span><h2 id="b8">Markets that never close</h2><span class="pill"><i class="dot glow pulse"></i><span id="lv-upd">LIVE</span></span></div>
+    <div class="board-body">
+      <article class="card" id="c-dtcc" hidden>
+        <div class="card-head"><h3>CDS from the public swap tape</h3><span class="pill"><i class="dot"></i>DTCC · SEC</span></div>
+        <p class="flip-title" style="font-size:clamp(18px,2.4vw,22px);max-width:40ch;margin-bottom:10px">No Bloomberg needed: dealers have to report single-name CDS trades, and DTCC publishes them for free.</p>
+        <div id="cds-rows"></div>
+        <p class="mnote" id="cds-note"></p>
+      </article>
+      <div class="g-live">
+        <article class="card" id="c-poly" hidden>
+          <div class="card-head"><h3>Crowd odds: CoreWeave default</h3><span class="pill"><i class="dot amber"></i>Polymarket</span></div>
+          <div class="big"><span class="num lg" id="pm-num">—</span><span class="chg" id="pm-chg"></span></div>
+          <p class="side-desc" id="pm-desc"></p>
+          <div class="spark" id="pm-spark"></div>
+          <div class="lv" id="pm-ladder"></div>
+          <p class="mnote" id="pm-note"></p>
+        </article>
+        <article class="card" id="c-pendle" hidden>
+          <div class="card-head"><h3>Onchain GPU credit spread</h3><span class="pill"><i class="dot"></i>Pendle · USD.AI</span></div>
+          <div class="big"><span class="num lg" id="pd-num">—</span><span class="chg" id="pd-chg"></span></div>
+          <p class="side-desc" id="pd-desc"></p>
+          <div class="spark" id="pd-spark"></div>
+          <p class="mnote" id="pd-note"></p>
+        </article>
+      </div>
+      <article class="card" id="c-tape" hidden>
+        <div class="card-head"><h3>24/7 tape: AI-infrastructure perps</h3><span class="pill"><i class="dot"></i>Hyperliquid</span></div>
+        <div id="hl-rows"></div>
+        <p class="mnote" id="hl-note"></p>
+      </article>
       <article class="card" id="c-live" hidden>
         <div class="card-head"><h3>Live H100 asking price</h3><span class="pill"><i class="dot glow pulse"></i><span id="lv-age">LIVE</span></span></div>
         <div class="big"><span class="num lg" id="lv-num">—</span><span class="of">/GPU-hr · median of <span id="lv-n">—</span> public marketplaces</span></div>
         <div class="lv" id="lv-src"></div>
         <p class="mnote" id="lv-note">Asking and list prices on public GPU marketplaces, refreshed every few minutes. These are not contract rates and not an index input; the index uses Silicon Data's weekly H100 print.</p>
       </article>
-      <p class="mnote" style="margin:0 6px 4px">Every dot is a dated, sourced print. Lines turn dashed across gaps of more than 60 days, where there is no print. Hollow dots are dated only to the week or month.</p>
+      <p class="mnote" style="margin:0 6px 4px">Live data is fetched by this site every couple of minutes from public APIs. None of it feeds the weekly index: these are faster, noisier markets shown next to it. Thin markets can be moved by a single trader; liquidity is shown on each card.</p>
     </div>
   </section>
 
@@ -609,6 +663,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
   sideCard('ast', IDX.A, IDX.Ab);
 
   // ---------- ticker ----------
+  var TICK_BASE = [];
   (function () {
     var f1 = input('F1'), a2 = scores.find(function (r) { return r.id === 'A2'; });
     var chgItem = function (key, sym, fmt, unit, upIsStress) {
@@ -631,7 +686,12 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       { s: 'ACSI GPU', v: String(IDX.Ai), c: IDX.Ab.toUpperCase(), cc: BAND_C[IDX.Ab] },
       { s: 'ACSI GAP', v: gapText(), c: IDX.state.toUpperCase(), cc: IDX.state === 'Aligned' ? C.dim : C.orange },
     ]);
-    var track = $('ticker');
+    TICK_BASE = items;
+    renderTicker(items);
+  })();
+
+  function renderTicker(items) {
+    var track = $('ticker'); track.replaceChildren();
     for (var k = 0; k < 2; k += 1) {
       var set = el('div', 'ticker-set'); if (k) set.setAttribute('aria-hidden', 'true');
       items.forEach(function (it) {
@@ -643,7 +703,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       });
       track.appendChild(set);
     }
-  })();
+  }
 
   // ---------- chart stats ----------
   (function () {
@@ -1216,7 +1276,176 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     });
   })();
 
-  // ---------- live GPU asks (served by /api/gpu on Vercel; the card stays hidden when it is unavailable) ----------
+  // ---------- live board (served by /api/live and /api/gpu on Vercel; hidden when unavailable) ----------
+  var LIVE = { data: null, tick: [] };
+  var spark = function (host, pts, color, fmt, opts) {
+    host.replaceChildren();
+    if (!pts || pts.length < 2) return;
+    opts = opts || {};
+    var W = Math.max(200, host.clientWidth), H = 70, m = { l: 2, r: 56, t: 10, b: 16 };
+    var x = d3.scaleUtc(d3.extent(pts, function (p) { return p.t; }), [m.l, W - m.r]);
+    var ext = d3.extent(pts, function (p) { return p.v; }); var pad = (ext[1] - ext[0]) * 0.15 || Math.abs(ext[1]) * 0.1 || 1;
+    var y = d3.scaleLinear([ext[0] - pad, ext[1] + pad], [H - m.b, m.t]);
+    var svg = d3.select(host).append('svg').attr('viewBox', '0 0 ' + W + ' ' + H).attr('height', H);
+    var gid = 'sp-' + host.id;
+    var lg = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    lg.append('stop').attr('offset', 0).attr('stop-color', color).attr('stop-opacity', 0.22);
+    lg.append('stop').attr('offset', 1).attr('stop-color', color).attr('stop-opacity', 0);
+    svg.append('path').datum(pts).attr('fill', 'url(#' + gid + ')').attr('d', d3.area().x(function (p) { return x(p.t); }).y0(H - m.b).y1(function (p) { return y(p.v); }));
+    svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('d', d3.line().x(function (p) { return x(p.t); }).y(function (p) { return y(p.v); }));
+    var peak = pts.reduce(function (a, b) { return b.v > a.v ? b : a; });
+    if (opts.peak && peak !== pts[pts.length - 1]) {
+      svg.append('circle').attr('cx', x(peak.t)).attr('cy', y(peak.v)).attr('r', 3).attr('fill', '#111114').attr('stroke', color).attr('stroke-width', 1.5);
+      svg.append('text').attr('x', x(peak.t)).attr('y', y(peak.v) - 6).attr('text-anchor', 'middle').attr('fill', color).style('font', '600 10px "JetBrains Mono", ui-monospace, monospace').text('peak ' + fmt(peak.v));
+    }
+    var l = pts[pts.length - 1];
+    svg.append('circle').attr('class', 'halo').attr('cx', x(l.t)).attr('cy', y(l.v)).attr('r', 4.5).attr('fill', color);
+    svg.append('circle').attr('cx', x(l.t)).attr('cy', y(l.v)).attr('r', 4.5).attr('fill', color).attr('stroke', '#111114').attr('stroke-width', 1.5);
+    var tx = W - m.r + 8, txt = fmt(l.v), w = tw(txt, MONO) + 12;
+    svg.append('rect').attr('x', tx).attr('y', y(l.v) - 9.5).attr('width', w).attr('height', 19).attr('rx', 4).attr('fill', color);
+    svg.append('text').attr('x', tx + 6).attr('y', y(l.v) + 3.8).attr('fill', '#0b0b0c').style('font', MONO).text(txt);
+    [[pts[0].t, 'start'], [l.t, 'end']].forEach(function (d) {
+      svg.append('text').attr('x', x(d[0])).attr('y', H - 2).attr('text-anchor', d[1]).attr('fill', C.dim).style('font-size', '10px').style('font-family', 'var(--mono)').text(d3.utcFormat('%-d %b')(d[0]));
+    });
+  };
+  var showLiveBoard = function () { $('live').hidden = false; };
+  var stampUpdated = function (iso) {
+    var t = new Date(iso); if (isNaN(t)) return;
+    $('lv-upd').textContent = 'LIVE · ' + d3.utcFormat('%H:%M UTC')(t);
+  };
+  var drawLiveSparks = function () {
+    var j = LIVE.data; if (!j) return;
+    if (j.polymarket && j.polymarket.history_first_market && j.polymarket.history_first_market.length > 1) {
+      spark($('pm-spark'), j.polymarket.history_first_market.map(function (h) { return { t: new Date(h.date + 'T00:00:00Z'), v: h.p * 100 }; }), C.amber, function (v) { return v.toFixed(1) + '%'; }, { peak: true });
+    }
+    if (j.pendle && j.sofr && j.pendle.history && j.pendle.history.length > 1) {
+      spark($('pd-spark'), j.pendle.history.map(function (h) { return { t: new Date(h.date + 'T00:00:00Z'), v: (h.implied_apy - j.sofr.rate) * 10000 }; }), C.orange, function (v) { return '+' + Math.round(v) + ' bp'; }, { peak: true });
+    }
+  };
+  var renderLive = function (j) {
+    if (!j) return;
+    LIVE.data = j; var tick = [], any = false, f0 = d3.format(',.0f'), pct = function (v, d) { return (v * 100).toFixed(d === undefined ? 1 : d) + '%'; };
+    var pm = j.polymarket;
+    if (pm && pm.markets && pm.markets.length) {
+      any = true; $('c-poly').hidden = false;
+      var m0 = pm.markets[0];
+      $('pm-num').textContent = pct(m0.yes);
+      var hist = pm.history_first_market || [];
+      var wk = hist.filter(function (h) { return Date.parse(h.date) <= Date.now() - 7 * DAY; }).pop();
+      var pc = $('pm-chg');
+      if (wk) { var up = m0.yes > wk.p; pc.textContent = (up ? '▲ from ' : '▼ from ') + pct(wk.p) + ' on ' + fmtShort(wk.date); pc.style.color = up ? C.red : C.green; pc.style.fontSize = '14px'; }
+      var deadline = new Date(Date.parse(m0.end_date + 'T00:00:00Z') - DAY).toISOString().slice(0, 10);
+      $('pm-desc').textContent = 'chance CoreWeave announces bankruptcy by ' + fmtDate(deadline) + ' (mid of the order book)';
+      var lad = $('pm-ladder'); lad.replaceChildren();
+      pm.markets.forEach(function (mk) {
+        var r = el('div', 'lv-row'); r.appendChild(el('span', null, 'By end-' + (Number(mk.end_date.slice(0, 4)) - 1)));
+        r.appendChild(el('span', 'k', mk.implied_spread_bp ? '≈ ' + f0(mk.implied_spread_bp) + ' bp/yr implied' : ''));
+        r.appendChild(el('b', null, pct(mk.yes))); lad.appendChild(r);
+      });
+      var cw = seriesPts('crwv'), cwl = cw[cw.length - 1];
+      var note = $('pm-note'); note.replaceChildren();
+      note.append('Converted at 40% recovery, the end-' + (Number(m0.end_date.slice(0, 4)) - 1) + ' odds imply about ' + f0(m0.implied_spread_bp) + ' bp a year of default risk; CoreWeave\u2019s 5-year CDS printed ' + f0(cwl.value) + ' bp on ' + fmtShort(cwl.date) + '. Thin market: $' + f0(m0.liquidity_usd) + ' of liquidity, so one trader can move it. ');
+      link(note, 'Polymarket ↗', pm.url);
+      tick.push({ s: 'POLYMARKET CRWV DEFAULT \u2019' + String(Number(m0.end_date.slice(0, 4)) - 1).slice(2), v: pct(m0.yes), c: wk ? (m0.yes > wk.p ? '▲ ' : '▼ ') + (Math.abs(m0.yes - wk.p) * 100).toFixed(1) + ' PTS 7D' : null, cc: wk && m0.yes > wk.p ? C.red : C.green, n: 'LIVE' });
+    }
+    var pd = j.pendle, sf = j.sofr;
+    if (pd && sf && isFinite(pd.implied_apy)) {
+      any = true; $('c-pendle').hidden = false;
+      var bp = Math.round((pd.implied_apy - sf.rate) * 10000);
+      $('pd-num').textContent = (bp >= 0 ? '+' : '−') + f0(Math.abs(bp)) + ' bp';
+      var recent = (pd.history || []).filter(function (h) { return Date.parse(h.date) >= Date.now() - 10 * DAY; });
+      var peak = recent.reduce(function (a, b) { return !a || b.implied_apy > a.implied_apy ? b : a; }, null);
+      var dc = $('pd-chg');
+      if (peak && peak.implied_apy - pd.implied_apy > 0.002) { dc.textContent = 'peaked at +' + f0((peak.implied_apy - sf.rate) * 10000) + ' bp on ' + fmtShort(peak.date); dc.style.color = C.orange; dc.style.fontSize = '14px'; }
+      $('pd-desc').textContent = 'market-implied fixed rate for lending into USD.AI\u2019s GPU-loan vault to ' + fmtShort(pd.expiry) + ' ' + pd.expiry.slice(0, 4) + ' (' + pct(pd.implied_apy, 2) + '), minus SOFR (' + pct(sf.rate, 2) + ')';
+      var pn = $('pd-note'); pn.replaceChildren();
+      pn.append('The first market-priced rate on GPU-backed loans we know of. It is thin ($' + (pd.liquidity_usd / 1e6).toFixed(1) + 'm of liquidity) and incentive points distort it, so read the moves, not the level. History uses today\u2019s SOFR. ');
+      link(pn, 'Pendle ↗', pd.url); pn.append(' · '); link(pn, 'SOFR, NY Fed ↗', sf.url);
+      tick.push({ s: 'ONCHAIN GPU CREDIT SPREAD', v: (bp >= 0 ? '+' : '−') + f0(Math.abs(bp)) + ' bp', c: 'PT-sUSDai − SOFR', cc: C.orange, n: 'LIVE' });
+    }
+    var hl = j.hyperliquid;
+    if (hl && hl.rows && hl.rows.length) {
+      any = true; $('c-tape').hidden = false;
+      var host = $('hl-rows'); host.replaceChildren();
+      var maxc = d3.max(hl.rows, function (r) { return Math.abs(r.change_24h || 0); }) || 0.01;
+      hl.rows.forEach(function (r) {
+        var row = el('div', 'hl'); row.appendChild(el('span', 'sym', r.symbol)); row.appendChild(el('span', 'nm', r.name));
+        row.appendChild(el('span', 'px', '$' + Number(r.mark).toFixed(2)));
+        var c = el('span', 'ch'); var bar = el('i'); var ch = r.change_24h || 0, col = ch < 0 ? C.red : C.green;
+        bar.style.width = Math.round((Math.abs(ch) / maxc) * 60) + 'px'; bar.style.background = col; c.style.color = col;
+        c.append(bar, (ch < 0 ? '−' : '+') + (Math.abs(ch) * 100).toFixed(1) + '%'); row.appendChild(c); host.appendChild(row);
+        if (r.symbol === 'CRWV') tick.push({ s: 'CRWV 24/7 PERP', v: '$' + Number(r.mark).toFixed(2), c: (ch < 0 ? '▼ ' : '▲ ') + (Math.abs(ch) * 100).toFixed(1) + '% 24H', cc: col, n: 'HYPERLIQUID' });
+      });
+      var hn = $('hl-note'); hn.replaceChildren();
+      hn.append('Onchain perpetual futures on Hyperliquid (HIP-3) that trade around the clock, including when Nasdaq is closed. Change is versus 24 hours ago. ');
+      var dead = (hl.gpu_rent_perps || []).filter(function (g) { return g.delisted; });
+      if (dead.length) hn.append('The onchain H100 rent perps (' + dead.map(function (g) { return g.symbol; }).join(', ') + ') are delisted with no open interest; last marks ' + dead.map(function (g) { return '$' + Number(g.last_mark).toFixed(2); }).join(' and ') + '. ');
+      link(hn, 'Hyperliquid ↗', hl.url);
+    }
+    if (any) { showLiveBoard(); stampUpdated(j.updated); drawLiveSparks(); }
+    LIVE.tick = tick;
+    if (tick.length || LIVE.cdsTick) renderTicker((LIVE.cdsTick || []).concat(tick).concat(TICK_BASE));
+  };
+  // DTCC public swap tape: daily 5-year CDS levels
+  var CDSD = null;
+  var miniSpark = function (host, pts, color) {
+    host.replaceChildren(); if (!pts || pts.length < 2) return;
+    var W = Math.max(120, host.clientWidth), H = 30;
+    var x = d3.scaleUtc(d3.extent(pts, function (p) { return p.t; }), [2, W - 6]);
+    var e = d3.extent(pts, function (p) { return p.v; }), pad = (e[1] - e[0]) * 0.2 || 5;
+    var y = d3.scaleLinear([e[0] - pad, e[1] + pad], [H - 3, 3]);
+    var svg = d3.select(host).append('svg').attr('viewBox', '0 0 ' + W + ' ' + H);
+    svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1.8).attr('d', d3.line().x(function (p) { return x(p.t); }).y(function (p) { return y(p.v); }));
+    var l = pts[pts.length - 1];
+    svg.append('circle').attr('cx', x(l.t)).attr('cy', y(l.v)).attr('r', 3).attr('fill', color);
+  };
+  var drawCdsSparks = function () {
+    if (!CDSD) return;
+    CDSD.entities.forEach(function (e) {
+      var h = document.getElementById('mini-' + e.id);
+      if (h) miniSpark(h, e.series.map(function (s) { return { t: new Date(s.date + 'T00:00:00Z'), v: s.bp }; }), e.id === 'CRWV' ? C.red : e.id === 'ORCL' ? C.amber : '#7d9fd6');
+    });
+  };
+  var renderCds = function (j) {
+    if (!j || !Array.isArray(j.entities)) return;
+    var ok = j.entities.filter(function (e) { return e.latest; });
+    if (!ok.length) return;
+    CDSD = j; showLiveBoard(); $('c-dtcc').hidden = false;
+    var host = $('cds-rows'); host.replaceChildren(); var f0 = d3.format(',.0f');
+    ok.forEach(function (e) {
+      var r = el('div', 'cds'); r.appendChild(el('b', null, e.name + ' 5Y'));
+      var v = el('span', 'lv-bp', f0(e.latest.bp) + ' bp'); v.style.color = e.latest.bp >= 1000 ? C.red : e.latest.bp >= 250 ? C.amber : C.fg2; r.appendChild(v);
+      var mini = el('div', 'mini'); mini.id = 'mini-' + e.id; r.appendChild(mini);
+      var prev = e.series.length > 1 ? e.series[e.series.length - 2] : null;
+      var meta = el('span', 'meta', fmtShort(e.latest.date).toUpperCase() + ' · ' + e.latest.trades + (e.latest.trades === 1 ? ' TRADE' : ' TRADES') + (prev ? ' · ' + (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) + ' VS ' + fmtShort(prev.date).toUpperCase() : ''));
+      r.appendChild(meta); host.appendChild(r);
+      if (e.id === 'ORCL' || e.id === 'CRWV') LIVE.cdsTick = (LIVE.cdsTick || []).filter(function (t) { return t.id !== e.id; }).concat([{ id: e.id, s: (e.id === 'ORCL' ? 'ORCL' : 'CRWV') + ' 5Y CDS · DTCC TAPE', v: f0(e.latest.bp) + ' bp', c: prev ? (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) : null, cc: prev && e.latest.bp >= prev.bp ? C.red : C.green, n: fmtShort(e.latest.date).toUpperCase() }]);
+    });
+    var note = $('cds-note'); note.replaceChildren();
+    var orcl = j.entities.filter(function (e) { return e.id === 'ORCL'; })[0], f2 = input('F2');
+    var same = orcl && orcl.series.filter(function (s) { return s.date === f2.obs_date; })[0];
+    note.append('Daily median of new 5-year trades reported to DTCC under the SEC\u2019s swap rules (DTCC is one of two repositories, so some trades are missing). Quoted spreads are used as reported; upfront prices are converted with a standard flat-hazard model (40% recovery). Some days have only a few trades, so single days are noisy. ');
+    if (same) note.append('Cross-check: the index uses ' + f2.raw + ' bp for Oracle on ' + fmtShort(f2.obs_date) + ' from a press report; the tape gives ' + f0(same.bp) + ' bp that day. ');
+    link(note, 'DTCC SEC dashboard ↗', j.source_url);
+    drawCdsSparks();
+    if (LIVE.cdsTick) renderTicker(LIVE.cdsTick.concat(LIVE.tick || []).concat(TICK_BASE));
+  };
+  (function () {
+    if (!/^https?:/.test(location.protocol) || !window.fetch) return;
+    var load = function () { fetch('/api/cds').then(function (r) { return r.ok ? r.json() : null; }).then(renderCds).catch(function () {}); };
+    load(); setInterval(load, 900000);
+  })();
+
+  (function () {
+    if (!/^https?:/.test(location.protocol) || !window.fetch) return;
+    var load = function () {
+      var ctrl = window.AbortController ? new AbortController() : null;
+      if (ctrl) setTimeout(function () { ctrl.abort(); }, 12000);
+      fetch('/api/live', ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.ok ? r.json() : null; }).then(renderLive).catch(function () {});
+    };
+    load(); setInterval(load, 120000);
+  })();
+
   (function () {
     var card = $('c-live');
     if (!card || !/^https?:/.test(location.protocol) || !window.fetch) return;
@@ -1225,7 +1454,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       if (!j || j.median_usd_per_gpu_hr == null || !Array.isArray(j.sources) || !j.sources.length) return;
       var med = Number(j.median_usd_per_gpu_hr);
       if (!isFinite(med)) return;
-      card.hidden = false;
+      card.hidden = false; showLiveBoard();
       $('lv-num').textContent = '$' + med.toFixed(2);
       $('lv-n').textContent = String(j.sources.length);
       var src = $('lv-src'); src.replaceChildren();
@@ -1260,7 +1489,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
 
   // ---------- draw + redraw on width change ----------
   var lastW = 0;
-  var drawAll = function () { lastW = document.documentElement.clientWidth; drawSpread(); drawFlip(); drawUsd(); drawCharts(); };
+  var drawAll = function () { lastW = document.documentElement.clientWidth; drawSpread(); drawFlip(); drawUsd(); drawCharts(); drawLiveSparks(); drawCdsSparks(); };
   drawAll();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawAll);
   var tmr;

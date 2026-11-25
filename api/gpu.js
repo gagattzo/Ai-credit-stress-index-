@@ -38,11 +38,11 @@ async function akash() {
     const p = m.price || {};
     const v = Number(p.med ?? p.median ?? p.weightedAverage ?? p.avg);
     if (sane(v)) vals.push(v);
-    available += Number(m.availability?.available || 0);
+    available += Number(m.availability?.total || 0);
   }
   const v = median(vals);
   if (v === null) throw new Error('no H100 price');
-  return { id: 'akash', name: 'Akash Network', kind: 'decentralized marketplace', usd_per_gpu_hr: round2(v), offers: available || null, url: 'https://akash.network/pricing/gpus/' };
+  return { id: 'akash', name: 'Akash Network', kind: 'decentralized marketplace, median ask', usd_per_gpu_hr: round2(v), offers: available || null, url: 'https://akash.network/pricing/gpus/' };
 }
 
 // RunPod: public GraphQL GPU catalogue (on-demand "secure cloud" list price for H100 SXM).
@@ -53,10 +53,11 @@ async function runpod() {
   const j = await getJSON(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query }) });
   const types = j?.data?.gpuTypes || [];
   const sxm = types.filter((g) => /h100/i.test(`${g.id} ${g.displayName}`) && /(sxm|hbm3)/i.test(`${g.id} ${g.displayName}`));
-  const vals = sxm.map((g) => Number(g.securePrice)).filter(sane);
+  // Community-cloud price: the marketplace tier (secure-cloud list prices sit well above market asks).
+  const vals = sxm.map((g) => Number(g.communityPrice)).filter(sane);
   const v = median(vals);
   if (v === null) throw new Error('no H100 SXM price');
-  return { id: 'runpod', name: 'RunPod', kind: 'cloud list price', usd_per_gpu_hr: round2(v), offers: null, url: 'https://www.runpod.io/pricing' };
+  return { id: 'runpod', name: 'RunPod', kind: 'community-cloud price', usd_per_gpu_hr: round2(v), offers: null, url: 'https://www.runpod.io/pricing' };
 }
 
 // Vast.ai: marketplace asks (needs VAST_API_KEY). Median per-GPU price of verified, rentable H100 SXM on-demand offers.
