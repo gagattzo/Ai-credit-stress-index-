@@ -99,10 +99,22 @@ def main():
     blob = json.dumps(data, separators=(',', ':')).replace('</', '<\\/')
     page = re.sub(r'(<script id="bdc-data" type="application/json">).*?(</script>)', lambda m: m.group(1) + blob + m.group(2), page, flags=re.S)
     T = data['totals']
-    for k, v in {'n-bdcs': str(T['bdcs']), 'n-cost': f"${T['cost'] / 1e9:.2f}bn", 'n-debt-ratio': f"{T['debt_fv'] / T['debt_cost']:.3f}×",
-                 'n-facilities': str(T['facilities']), 'n-cw-holders': str(next(g['holders'] for g in gl if g['group'] == 'CoreWeave'))}.items():
-        page = re.sub(rf'(<span data-k="{k}">).*?(</span>)', lambda m: m.group(1) + v + m.group(2), page)
-    (SITE / 'bdc.html').write_text(page)
+    cw = next(g for g in gl if g['group'] == 'CoreWeave')
+    mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    main_date = max(set(x['mark_date'] for x in fac), key=lambda d: sum(1 for x in fac if x['mark_date'] == d))
+    y, mo, d = main_date.split('-')
+    low_who = re.sub(r',? ?(PTY|Ltd|LLC|Inc)\.?', '', T['lowest_debt_mark']['obligor']).replace(' Supercloud', '').strip() + ' at ' + \
+        T['lowest_debt_mark']['holder'].split(' ')[0]
+    vals = {'n-bdcs': str(T['bdcs']), 'n-cost': f"${T['cost'] / 1e9:.2f}bn", 'n-debt-ratio': f"{T['debt_fv'] / T['debt_cost']:.3f}×",
+            'n-facilities': str(T['facilities']), 'n-cw-holders': str(cw['holders']), 'n-cw-fv': f"${cw['fv'] / 1e6:,.0f}m",
+            'n-below': str(T['debt_below_097']), 'n-low': f"{T['lowest_debt_mark']['ratio']:.3f}×", 'n-low-who': low_who,
+            'n-asof': f"{int(d)} {mon[int(mo) - 1]} {y}",
+            'n-top': ' · '.join(f"{g['group'].replace(' Data Centers', '')} ${g['fv'] / 1e6:,.0f}m" for g in gl[:7])}
+    fill = lambda html: re.sub(r'(<(span|div) ([^>]*?)data-k="([a-z-]+)">)(.*?)(</\2>)',
+                               lambda m: m.group(1) + (vals[m.group(4)] if m.group(4) in vals else m.group(5)) + m.group(6), html)
+    (SITE / 'bdc.html').write_text(fill(page))
+    idx = SITE / 'index.html'
+    idx.write_text(fill(idx.read_text()))
     print(json.dumps(T, indent=1))
     for x in fac:
         print(f"{x['group'][:14]:14} | {x['obligor'][:48]:48} | {x['instrument'][:22]:22} | {x['holder'][:30]}")
