@@ -3,6 +3,10 @@
     {
       "source": "/s/:id",
       "destination": "/api/share?id=:id"
+    },
+    {
+      "source": "/lab",
+      "destination": "/lab.html"
     }
   ],
   "functions": {
@@ -16,6 +20,9 @@
     },
     "api/cds.js": {
       "maxDuration": 30
+    },
+    "api/lab.js": {
+      "maxDuration": 15
     }
   }
 }
