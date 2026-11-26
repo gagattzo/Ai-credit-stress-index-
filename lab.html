@@ -124,8 +124,8 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--m
 
 <section id="scoreboard" hidden><div class="wrap">
   <h2>Scoreboard</h2>
-  <p class="sub">Every method in the repo, re-scored each weekday evening on fresh data. Lower is better for the first three.</p>
-  <div class="tablecard"><table><thead><tr><th>Method</th><th class="n">R² vs Nasdaq</th><th class="n">Max one-trade move</th><th class="n">Thin days</th><th class="n">Daily move (sd)</th><th>Licence issues</th><th class="n">Gap now</th></tr></thead><tbody id="sb-rows"></tbody></table></div>
+  <p class="sub">Every method in the repo, re-scored each weekday evening on fresh data. Lower is better for the first three. A method is adopted only after 20 trading days of forward test, on data nobody could fit.</p>
+  <div class="tablecard"><table><thead><tr><th>Method</th><th class="n">R² vs Nasdaq</th><th class="n">Max one-trade move</th><th class="n">Thin days</th><th class="n">Daily move (sd)</th><th>Licence issues</th><th>Forward test</th><th class="n">Gap now</th></tr></thead><tbody id="sb-rows"></tbody></table></div>
 </div></section>
 
 <section id="connect"><div class="wrap">
@@ -209,20 +209,28 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--m
     });
   };
   var pct = function (v) { return Math.round(v * 100) + '%'; };
+  // Scoreboard rows: m.full holds the tests (older files used independence/manipulation blocks).
+  var T = function (m) {
+    if (m.full) return m.full;
+    return { days: m.days, from: m.from, to: m.to, r2: m.independence.r2_full, sd_daily: m.movement.sd_daily,
+      max_one_trade: m.manipulation.max_one_trade, share_thin_days: m.manipulation.share_thin_days };
+  };
   var stats = function (sb) {
     var m = sb && sb.methods && (sb.methods.filter(function (x) { return x.method === 'v0.1-live'; })[0] || sb.methods[0]);
     if (!m) return;
-    $('s-r2').textContent = (m.independence.r2_full * 100).toFixed(1) + '%';
-    $('s-one').textContent = m.manipulation.max_one_trade.toFixed(1) + ' pts';
-    $('s-thin').textContent = pct(m.manipulation.share_thin_days);
+    var t = T(m);
+    $('s-r2').textContent = (t.r2 * 100).toFixed(1) + '%';
+    $('s-one').textContent = t.max_one_trade.toFixed(1) + ' pts';
+    $('s-thin').textContent = pct(t.share_thin_days);
     var bad = m.licence.filter(function (l) { return !l.redistributable; }).length;
     $('s-lic').textContent = bad + ' of ' + m.licence.length;
-    $('s-note').textContent = 'Baseline ' + m.method + ', ' + m.days + ' trading days from ' + m.from + ' to ' + m.to + '. Scoreboard updated ' + sb.updated + '.';
+    $('s-note').textContent = 'Baseline ' + m.method + ', ' + t.days + ' trading days from ' + t.from + ' to ' + t.to + '. Scoreboard updated ' + sb.updated + '.';
     var rows = $('sb-rows'); rows.replaceChildren();
-    sb.methods.slice().sort(function (a, b) { return a.manipulation.max_one_trade - b.manipulation.max_one_trade; }).forEach(function (x) {
-      var tr = el('tr');
-      [[x.method], [x.independence.r2_full.toFixed(3), 'n'], [x.manipulation.max_one_trade.toFixed(2), 'n'], [pct(x.manipulation.share_thin_days), 'n'], [x.movement.sd_daily.toFixed(2), 'n'],
-        [x.licence.filter(function (l) { return !l.redistributable; }).map(function (l) { return l.input; }).join(', ') || 'none'], [(x.gap_now > 0 ? '+' : '') + x.gap_now.toFixed(1), 'n']]
+    sb.methods.slice().sort(function (a, b) { return T(a).max_one_trade - T(b).max_one_trade; }).forEach(function (x) {
+      var tx = T(x), tr = el('tr');
+      var fw = x.forward ? (x.forward.tests ? 'passed 20 days' : x.forward.days + ' of 20 days') : 'baseline';
+      [[x.method], [tx.r2.toFixed(3), 'n'], [tx.max_one_trade.toFixed(2), 'n'], [pct(tx.share_thin_days), 'n'], [tx.sd_daily.toFixed(2), 'n'],
+        [x.licence.filter(function (l) { return !l.redistributable; }).map(function (l) { return l.input; }).join(', ') || 'none'], [fw], [(x.gap_now > 0 ? '+' : '') + x.gap_now.toFixed(1), 'n']]
         .forEach(function (c) { tr.appendChild(el('td', c[1] || null, c[0])); });
       rows.appendChild(tr);
     });
