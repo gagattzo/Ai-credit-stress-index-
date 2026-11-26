@@ -176,6 +176,7 @@ body.adv .advv .sw { grid-template-columns: 62px minmax(0, 1fr) 38px 104px; gap:
 .lvchg { font-family: var(--mono); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .lvchg small { font-family: var(--sans, inherit); font-weight: 400; color: var(--muted); font-size: 12.5px; }
 .gapnum.fl-up, .gapnum.fl-dn { border-radius: 10px; }
+.lvstrip[hidden] { display: none; }
 .lvstrip { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .eyebrow b { white-space: nowrap; }
 @media (max-width: 560px) { body.is-live .nr-w { display: none; } }
@@ -1916,7 +1917,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     link(note, 'DTCC SEC dashboard ↗', j.source_url);
     drawCdsSparks();
     if (LIVE.cdsTick) renderTicker(LIVE.cdsTick.concat(LIVE.tick || []).concat(TICK_BASE));
-    try { renderLive(j); } catch (err) { /* the weekly reading stays on screen */ }
+    try { renderAcsiLive(j); } catch (err) { /* the weekly reading stays on screen */ }
     renderPulse();
   };
 
@@ -1951,7 +1952,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     svg.append('text').attr('x', x(l.date)).attr('y', H - 2).attr('text-anchor', 'end').attr('fill', C.fg).attr('font-size', 11.5).attr('font-weight', 600)
       .text((l.intraday ? 'today' : fmtShort(l.date)) + '  ' + signed1(l.G));
   };
-  var renderLive = function (j) {
+  var renderAcsiLive = function (j) {
     var ent = {}; (j.entities || []).forEach(function (e) { ent[e.id] = e; });
     var o = ent.ORCL, c = ent.CRWV;
     if (!o || !o.latest || !o.series || !o.series.length || IDX.A === null || IDX.G === null) return;
