@@ -7,6 +7,10 @@
     {
       "source": "/lab",
       "destination": "/lab.html"
+    },
+    {
+      "source": "/bdc",
+      "destination": "/bdc.html"
     }
   ],
   "functions": {
