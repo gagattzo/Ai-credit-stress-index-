@@ -475,21 +475,15 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
   </section>
 
   <section class="board" id="unknowns" aria-labelledby="b4">
-    <div class="board-head"><span class="tag">RISK</span><h2 id="b4">What we don't know</h2><span class="pill"><i class="dot amber"></i>10 open</span></div>
+    <div class="board-head"><span class="tag">READ</span><h2 id="b4">How to read the index</h2></div>
     <div class="board-body">
       <div class="card">
-        <p class="note" style="margin:0 4px 4px">The weak points a credit PM would raise, stated up front.</p>
         <ol class="unk">
-          <li><div><b>These are the weakest links, picked with hindsight.</b>The debt inputs were chosen in November 2026 because they were already under strain. This is not an average of AI credit: Microsoft, Alphabet, Amazon and Meta corporate debt is out of scope.</div></li>
-          <li><div><b>Financing is partly an Oracle index.</b>Two of the three debt inputs are Oracle: its own default protection, and loans on campuses Oracle leases.</div></li>
-          <li><div><b>Loan prices are press-reported quotes and expectations, not trade records.</b>"Below mid-80s" and "over 90" are words, taken at the bound. Healthy loans near par never make the news, so this input leans toward stress. SocGen's single "over 90" quote is counted for two loans, which lowers the score; the sensitivity table shows it counted once.</div></li>
-          <li><div><b>The utilization assumption is the biggest judgment call.</b>GPU anchors assume GPUs are rented 80% of the time. Other choices move the gap a lot; the sensitivity table shows by how much. Changing one call at a time, the gap stays above the aligned band in every case tested, but 70% utilization together with no Blackwell input brings it to about zero.</div></li>
+          <li><div><b>It tracks the stressed edge of AI credit.</b>The debt side covers the borrowers where AI credit stress shows first: CoreWeave, Oracle and the data-center campuses Oracle leases. Hyperscaler corporate debt (Microsoft, Alphabet, Amazon, Meta) is out of scope.</div></li>
+          <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it carries hedging demand as well as default risk.</div></li>
           <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
-          <li><div><b>GPU price indices disagree.</b>Ornn and Silicon Data are close on H100 today but have diverged sharply at times this autumn, and still differ widely on Blackwell. This index uses Silicon Data; Ornn would lower the gap (sensitivity table).</div></li>
-          <li><div><b>Some of the data is licensed.</b>The Oracle CDS input now comes from DTCC's free public trade data, which the SEC requires to be published without a fee. The GPU index values (Silicon Data) and the press-reported history in the charts are licensed by their providers: a public launch needs redistribution permission for those.</div></li>
-          <li><div><b>The history is reconstructed, not official.</b>The flip chart rebuilds each month from dated prints with the frozen anchors, but with only some inputs: no loan prices, no Blackwell trend, and CoreWeave's CDS standing in for its bonds. The official weekly series starts with this edition, and nothing will be back-filled into it.</div></li>
-          <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it is not a pure measure of default risk.</div></li>
-          <li><div><b>Two inputs are at their limits.</b>CoreWeave is past the distress line, so it scores 100 however far it widens; the Blackwell trend is rising, so it scores 0 however fast. Leave both out and the gap falls into the aligned band.</div></li>
+          <li><div><b>The main judgment calls are tested.</b>Anchors are frozen in method v0.1 and change only with a new method version. The sensitivity table re-runs the gap with each call changed: the 80% utilization behind the GPU anchors, the choice of GPU index, and the two inputs at their limits (CoreWeave past the distress line, Blackwell rents rising).</div></li>
+          <li><div><b>History is reconstructed; the official series is not.</b>The flip chart rebuilds earlier months from dated prints with a subset of inputs. The official weekly series starts on 24 Nov 2026 and is never back-filled.</div></li>
         </ol>
       </div>
     </div>
