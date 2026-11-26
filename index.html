@@ -2010,7 +2010,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     }
     if (L.c) {
       var c1 = sc('F1', L.c.bp);
-      why.append('CoreWeave 5Y CDS, implied from upfront payments, ');
+      why.append('CoreWeave 5Y CDS (priced from upfront payments) ');
       why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
       why.append(c1 >= 100 && f1s.score_exact >= 100 ? ' is past the distress line, so it scores the full 100. ' : ' (' + signed1((c1 - f1s.score_exact) / n) + ' on the gap). ');
     }
