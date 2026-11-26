@@ -113,6 +113,10 @@ function spreadFromUpfront(upfront, C, T, accr) {
   const L = legs((lo + hi) / 2, T);
   return L.prot / L.rpv;
 }
+// Coupons are sometimes written in percent (1 = 1%): 0.5 or more is divided by 100, and only 0 < C <= 10% is kept.
+const couponOf = (v) => { let c = Number(String(v || '').trim()); if (!(c > 0)) return null; if (c >= 0.5) c /= 100; return c <= 0.10 ? c : null; };
+// Quoted spreads come as decimals (0.0365) or, rarely, raw bp (365). 0.5-5 is neither; 10-5,000 bp is kept.
+const quotedOf = (v) => { let q = Number(String(v || '').trim()); if (!(q > 0)) return null; if (q >= 5) q /= 10000; else if (q >= 0.5) return null; return q >= 0.001 && q <= 0.5 ? q : null; };
 const median = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
 const isCdsRow = (r) => {
   const id = String(r['Underlier ID-Leg 1'] || ''), nm = `${r['Underlying Asset Name'] || ''} ${r['UPI Underlier Name'] || ''}`.toUpperCase();
@@ -168,17 +172,19 @@ function levelsForDay(rawRows, fileDate, prev) {
       const exec = Date.parse(r['Execution Timestamp']);
       const exp = Date.parse(`${r['Expiration Date']}T00:00:00Z`);
       if (Number.isNaN(exec) || Number.isNaN(exp) || exp !== onTheRun5Y(exec)) continue;
-      const C = Number(r['Fixed rate-Leg 1']);
+      const C = couponOf(r['Fixed rate-Leg 1']);
       const stepIn = exec + DAY_MS, T = (exp - stepIn) / (365.25 * DAY_MS);
       const accr = (stepIn - lastIMM(exec)) / (360 * DAY_MS);
       const N = Number(String(r['Notional amount-Leg 1']).replace(/[,+]/g, ''));
       // A blank upfront is missing, not zero: Number('') is 0, which would price the trade at its coupon.
+      // Only UFRO amounts are upfronts; UWIN is the payment to close a trade.
       const amtRaw = String(r['Other payment amount'] || '').trim();
-      const amt = amtRaw === '' ? NaN : Number(amtRaw.replace(/[,+]/g, ''));
+      const ufro = String(r['Other payment type'] || '').trim().toUpperCase() === 'UFRO';
+      const amt = amtRaw === '' || !ufro ? NaN : Number(amtRaw.replace(/[,+]/g, ''));
       const pct = N > 0 && Number.isFinite(amt) ? amt / N : null;
-      if (r['Spread-Leg 1']) {
-        const q = Number(r['Spread-Leg 1']);
-        if (q >= 0.001 && q < 0.5) { // 10 to 5,000 bp; anything else in this field is a price or mis-scaled
+      if (Number(r['Spread-Leg 1']) > 0) {
+        const q = quotedOf(r['Spread-Leg 1']);
+        if (q !== null) {
           quoted.push({ s: q, exec });
           // Calibration: trades that report both a quoted spread and an upfront (coupon inferred as 1% or 5%).
           if (pct !== null && pct > 0) {
@@ -193,6 +199,7 @@ function levelsForDay(rawRows, fileDate, prev) {
     }
     const ref = quoted.length ? median(quoted.map((q) => q.s)) : (prev && prev[e.id] ? prev[e.id].bp / 10000 : null);
     const vals = quoted.map((q) => q.s);
+    const implied = [];
     let resolvedByRef = 0;
     // A reading at the solver's floor (under 10 bp) is the impossible sign of an unsigned upfront, not a price.
     const ok = (x) => x >= 0.001 && x < 1;
@@ -201,10 +208,14 @@ function levelsForDay(rawRows, fileDate, prev) {
       const feasible = [u.hi, u.lo].filter(ok);
       if (ref !== null && feasible.length) { s = feasible.reduce((a, b) => (Math.abs(b - ref) < Math.abs(a - ref) ? b : a)); resolvedByRef += 1; }
       else if (ref === null && u.pct >= 0.02 && ok(u.hi)) s = u.hi; // without a reference, only take clearly one-sided upfronts
-      if (s !== null) vals.push(s);
+      if (s !== null) { vals.push(s); implied.push(s); }
     }
     [...quoted, ...fromUpfront].forEach((x) => { if (!last || x.exec > last) last = x.exec; });
-    out[e.id] = vals.length ? { bp: Math.round(median(vals) * 10000), trades: vals.length, quoted: quoted.length, last_trade: new Date(last).toISOString() } : null;
+    // Official level: median of all priced trades. Quoted and upfront-implied medians are reported apart, with the kind.
+    const bp1 = (xs) => (xs.length ? Math.round(median(xs) * 10000 * 10) / 10 : null);
+    const kind = quoted.length && implied.length ? 'mixed' : quoted.length ? 'quoted' : 'upfront_implied';
+    out[e.id] = vals.length ? { bp: Math.round(median(vals) * 10000), kind, trades: vals.length, quoted: quoted.length,
+      quoted_bp: bp1(quoted.map((q) => q.s)), upfront_implied_bp: bp1(implied), last_trade: new Date(last).toISOString() } : null;
   }
   out._calibration = calibrate(rows);
   return out;
@@ -260,7 +271,7 @@ module.exports = async (req, res) => {
     prev = Object.assign({}, prev || {}, ...ENTITIES.filter((e) => levels[e.id]).map((e) => ({ [e.id]: levels[e.id] })));
   });
   const entities = ENTITIES.map((e) => {
-    const series = got.filter((f) => f.levels[e.id]).map((f) => Object.assign({ date: f.date, bp: f.levels[e.id].bp, trades: f.levels[e.id].trades }, f.intraday ? { intraday: true } : {}));
+    const series = got.filter((f) => f.levels[e.id]).map((f) => Object.assign({ date: f.date, bp: f.levels[e.id].bp, trades: f.levels[e.id].trades, kind: f.levels[e.id].kind }, f.intraday ? { intraday: true } : {}));
     const latest = series[series.length - 1] || null;
     const lastFile = got.filter((f) => f.levels[e.id]).pop();
     return { id: e.id, name: e.name, red: e.red, tenor: '5Y', latest, last_trade: lastFile ? lastFile.levels[e.id].last_trade : null, series };
@@ -277,9 +288,10 @@ module.exports = async (req, res) => {
     intraday: got.filter((f) => f.intraday).map((f) => ({ date: f.date, files: f.slices })),
     calibration: (() => { const full = got.filter((f) => !f.intraday && f.levels._calibration); const f = full[full.length - 1]; return f ? Object.assign({ date: f.date }, f.levels._calibration) : null; })(),
     entities,
-    method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront prices converted with a flat-hazard model (40% recovery). Days marked intraday use the trades published so far that day.',
+    method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront (UFRO) payments converted with a flat-hazard model (40% recovery, 4.5% rate); coupons written in percent normalised. kind says what a level rests on: quoted, upfront_implied (a model) or mixed. CoreWeave has no quoted 5-year spread, so every CoreWeave level is upfront_implied. Days marked intraday use the trades published so far that day. Cleaning rules and tests: github.com/gagattzo/acsi-lab.',
   }));
 };
 
 // Shared with /api/tape (not a route).
 module.exports.model = { spreadFromUpfront, lastIMM, onTheRun5Y };
+module.exports._test = { levelsForDay, parseCSV, unzipFirst };

@@ -695,6 +695,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
           <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it carries hedging demand as well as default risk.</div></li>
           <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
           <li><div><b>The main judgment calls are tested.</b>Anchors are frozen in method v0.1 and change only with a new method version. The sensitivity table re-runs the gap with each call changed: the 80% utilization behind the GPU anchors, the choice of GPU index, and the two inputs at their limits (CoreWeave past the distress line, Blackwell rents rising).</div></li>
+          <li><div><b>Live means the CDS inputs.</b>ACSI Live re-prices Oracle and CoreWeave 5-year CDS with every trade DTCC publishes. CoreWeave CDS trades on upfront terms only, so its spread is computed from the upfront with the standard model (flat hazard, 40% recovery). Loans and GPU rents move with each weekly edition.</div></li>
           <li><div><b>History is reconstructed; the official series is not.</b>The flip chart rebuilds earlier months from dated prints with a subset of inputs. The official weekly series starts on 24 Nov 2026 and is never back-filled.</div></li>
         </ol>
       </div>
@@ -2009,11 +2010,11 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     }
     if (L.c) {
       var c1 = sc('F1', L.c.bp);
-      why.append('CoreWeave 5Y CDS ');
+      why.append('CoreWeave 5Y CDS, implied from upfront payments, ');
       why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
       why.append(c1 >= 100 && f1s.score_exact >= 100 ? ' is past the distress line, so it scores the full 100. ' : ' (' + signed1((c1 - f1s.score_exact) / n) + ' on the gap). ');
     }
-    why.append('Loans and GPU rents hold at the ' + fmtShort(ED.as_of) + ' edition until their next print. The weekly close is the official number.');
+    why.append('Only the two CDS inputs re-price daily; loans and GPU rents hold at the ' + fmtShort(ED.as_of) + ' edition until the next one. The weekly close is the official number.');
   };
   (function () {
     var load = function () { getLive('/api/cds', function (j) { renderCds(j); markCheck('cds', 300000, 'CDS LEVELS CHECKED'); }); };

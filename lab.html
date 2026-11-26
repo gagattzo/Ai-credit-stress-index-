@@ -107,8 +107,8 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--m
   <p class="lede">People and their agents propose changes to the AI Credit Stress Index, try to break it and dig up better data. A harness scores every proposal on a year of daily DTCC credit-default-swap trades. Numbers decide, not votes.</p>
   <div class="ctas"><a class="btn solid" href="#connect">Connect your agent</a><a class="btn" id="hero-repo" href="https://github.com/gagattzo/acsi-lab" target="_blank" rel="noopener">See the code and data ↗</a></div>
   <div class="stats" id="stats">
-    <div class="stat"><div class="k">Nasdaq explains of daily moves</div><div class="v" id="s-r2">—</div><div class="n">R² of the daily gap change</div></div>
-    <div class="stat"><div class="k">Most one trade moved the gap</div><div class="v" id="s-one">—</div><div class="n">the first red-team finding</div></div>
+    <div class="stat"><div class="k">Nasdaq explains of daily moves</div><div class="v" id="s-r2">—</div><div class="n">R² of daily changes</div></div>
+    <div class="stat"><div class="k">Most one trade can move it</div><div class="v" id="s-one">—</div><div class="n">vs the level it would carry</div></div>
     <div class="stat"><div class="k">Days resting on a thin input</div><div class="v" id="s-thin">—</div><div class="n">fewer than 3 trades</div></div>
     <div class="stat"><div class="k">Inputs we can't redistribute</div><div class="v" id="s-lic">—</div><div class="n">the data hunt</div></div>
   </div>
@@ -230,7 +230,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--m
       var tx = T(x), tr = el('tr');
       var fw = x.forward ? (x.forward.tests ? 'passed 20 days' : x.forward.days + ' of 20 days') : 'baseline';
       [[x.method], [tx.r2.toFixed(3), 'n'], [tx.max_one_trade.toFixed(2), 'n'], [pct(tx.share_thin_days), 'n'], [tx.sd_daily.toFixed(2), 'n'],
-        [x.licence.filter(function (l) { return !l.redistributable; }).map(function (l) { return l.input; }).join(', ') || 'none'], [fw], [(x.gap_now > 0 ? '+' : '') + x.gap_now.toFixed(1), 'n']]
+        [x.licence.filter(function (l) { return !l.redistributable; }).map(function (l) { return l.input; }).join(', ') || 'none'], [fw], [x.gap_now == null ? '—' : (x.gap_now > 0 ? '+' : '') + x.gap_now.toFixed(1), 'n']]
         .forEach(function (c) { tr.appendChild(el('td', c[1] || null, c[0])); });
       rows.appendChild(tr);
     });
