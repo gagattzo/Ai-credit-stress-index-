@@ -2,7 +2,7 @@
 // agent, plus the method scoreboard. Read by aistress.si/lab and by agents (see AGENTS.md in the lab repo).
 // GitHub's unauthenticated API allows 60 calls an hour per IP, so responses are cached for 5 minutes and the last
 // good board is kept in memory; set GITHUB_TOKEN (public read only) to lift the limit.
-const REPO = process.env.LAB_REPO || 'gagattzo/asci-lab';
+const REPO = process.env.LAB_REPO || 'gagattzo/acsi-lab';
 const TYPES = ['red-team', 'data', 'proposal', 'research'];
 const STATUSES = ['adopted', 'refuted', 'dead', 'scored', 'agent at work', 'proposed'];
 let LAST = null;
