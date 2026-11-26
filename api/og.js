@@ -3,7 +3,7 @@
 // redirects to the static /og.png so a shared link never shows a broken card.
 const fs = require('fs');
 const path = require('path');
-const { loadData, computeIndex, getLiveContext, MON, baseUrl } = require('./_acsi');
+const { loadData, computeIndex, liveIndex, getLiveContext, MON, baseUrl } = require('./_acsi');
 
 const C = { bg: '#09090a', card: '#111114', line: '#212125', line2: '#2b2b30', track: '#1b1b1f', fg: '#ededef', fg2: '#c4c4ca', muted: '#8a8a92', dim: '#5d5d65', green: '#45b08c', amber: '#d8a03d', orange: '#e2773f', red: '#e5534b' };
 const BAND_C = { Calm: C.green, Elevated: C.amber, Stressed: C.orange, Distressed: C.red };
@@ -54,6 +54,7 @@ function sideBlock(label, v, b) {
 }
 
 function card(I, live) {
+  const LV = live && live.cds ? liveIndex(I, live.cds) : null;
   const logo = h('svg', { width: 24, height: 24 }, { type: 'path', props: { d: 'M5 22 L12 15 L17 18.5 L27 8', stroke: C.green, strokeWidth: 3, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' } });
   logo.props.viewBox = '0 0 32 32';
   const stateCol = I.state === 'Aligned' || I.G === null ? C.muted : C.orange;
@@ -78,11 +79,12 @@ function card(I, live) {
       h('div', mono(18, C.muted, 400), 'aistress.si')),
     h('div', { width: 1080, flexGrow: 1, marginTop: 24 },
       h('div', { flexDirection: 'column', width: 562, justifyContent: 'center' },
-        h('div', mono(18, C.muted, 400, { letterSpacing: 2 }), 'STRESS GAP · WEEKLY · ' + longDate(I.asOf)),
-        h('div', { fontFamily: 'Inter', fontWeight: 800, fontSize: 190, lineHeight: 1, letterSpacing: -9, color: C.fg, marginTop: 4 }, I.gapText),
-        h('div', { fontFamily: 'Inter', fontWeight: 700, fontSize: 40, letterSpacing: -1, color: stateCol, marginTop: 6 }, I.state)),
+        h('div', mono(18, LV ? C.green : C.muted, LV ? 600 : 400, { letterSpacing: 2 }), LV ? 'STRESS GAP · LIVE · ' + longDate(LV.date) : 'STRESS GAP · WEEKLY · ' + longDate(I.asOf)),
+        h('div', { fontFamily: 'Inter', fontWeight: 800, fontSize: LV ? 172 : 190, lineHeight: 1, letterSpacing: LV ? -8 : -9, color: C.fg, marginTop: 4 }, LV ? LV.gapText : I.gapText),
+        h('div', { fontFamily: 'Inter', fontWeight: 700, fontSize: 40, letterSpacing: -1, color: stateCol, marginTop: 6 }, LV ? LV.state : I.state),
+        LV ? h('div', mono(17, C.muted, 400, { marginTop: 12, letterSpacing: 1 }), 'WEEKLY CLOSE ' + LV.closeText + ' · ' + longDate(I.asOf)) : null),
       h('div', { width: 518, flexDirection: 'column', justifyContent: 'center', paddingLeft: 47, borderLeft: '1px solid ' + C.line },
-        sideBlock('FINANCING STRESS · DEBT', I.F, I.Fb),
+        sideBlock('FINANCING STRESS · DEBT', LV ? LV.F : I.F, LV ? LV.Fb : I.Fb),
         h('div', { height: 34 }),
         sideBlock('GPU ASSET STRESS · RENTS', I.A, I.Ab))),
     h('div', { width: 1080, borderTop: '1px solid ' + C.line, paddingTop: 20, marginTop: 22 }, bottom)));

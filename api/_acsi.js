@@ -51,7 +51,24 @@ function computeIndex(D) {
     asOf: ED.as_of, method: ED.method, label: ED.label,
     F, A, G, Fi: r0(F), Ai: r0(A), Gi: r0(G), gapText: signed(r0(G)),
     Fb: F === null ? 'Insufficient data' : band(F), Ab: A === null ? 'Insufficient data' : band(A), state,
+    fin, dead, inputs: D.inputs,
   };
+}
+
+// ACSI Live, as on the page: the same method re-priced with the latest DTCC 5Y CDS levels.
+// F2 takes Oracle's; F1 takes CoreWeave's as a live proxy for the bond spread (same anchors).
+// Loans and GPU rents hold at the edition. Returns null when there is nothing to re-price.
+function liveIndex(I, cds) {
+  if (!cds || !Array.isArray(cds.entities) || I.A === null || !I.fin || I.fin.length < 2) return null;
+  const ent = (id) => cds.entities.find((e) => e.id === id && e.latest);
+  const o = ent('ORCL'), c = ent('CRWV');
+  if (!o) return null;
+  const sc = (id, raw) => { const r = I.inputs.find((x) => x.id === id); const calm = Number(r.calm), dis = Number(r.distress); return Math.max(0, Math.min(100, (100 * (raw - calm)) / (dis - calm))); };
+  const s = I.fin.map((r) => (r.id === 'F1' && c ? sc('F1', c.latest.bp) : r.id === 'F2' ? sc('F2', o.latest.bp) : r.score));
+  const F = s.reduce((t, v) => t + v, 0) / s.length, G = F - I.A;
+  const one = (v) => (v >= 0.05 ? '+' : v <= -0.05 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+  const state = G >= I.dead ? 'Stress sits in the debt' : G <= -I.dead ? 'Stress sits in the GPUs' : 'Aligned';
+  return { F, A: I.A, G, gapText: one(G), closeText: one(I.G), Fb: band(F), state, date: [o.latest.date, c && c.latest.date].filter(Boolean).sort().pop() };
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -79,6 +96,7 @@ async function getLiveContext(base, ms = 1800) {
   if (cw) out.items.push({ k: 'crwv', label: 'CRWV 5Y CDS', long: 'CoreWeave 5Y CDS ' + fmtBp(cw.latest.bp) + ' (' + fmtDay(cw.latest.date) + ')', value: fmtBp(cw.latest.bp) });
   if (oc) out.items.push({ k: 'orcl', label: 'ORCL 5Y CDS', long: 'Oracle 5Y CDS ' + fmtBp(oc.latest.bp) + ' (' + fmtDay(oc.latest.date) + ')', value: fmtBp(oc.latest.bp) });
   if (!out.updated && cds) out.updated = cds.updated;
+  out.cds = cds;
   return out;
 }
 
@@ -90,4 +108,4 @@ function baseUrl(req) {
   return (/^(localhost|127\.)/.test(host) ? 'http://' : 'https://') + host;
 }
 
-module.exports = { loadData, computeIndex, getLiveContext, fmtDay, esc, baseUrl, MON };
+module.exports = { loadData, computeIndex, liveIndex, getLiveContext, fmtDay, esc, baseUrl, MON };
