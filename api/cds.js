@@ -194,11 +194,14 @@ function levelsForDay(rawRows, fileDate, prev) {
     const ref = quoted.length ? median(quoted.map((q) => q.s)) : (prev && prev[e.id] ? prev[e.id].bp / 10000 : null);
     const vals = quoted.map((q) => q.s);
     let resolvedByRef = 0;
+    // A reading at the solver's floor (under 10 bp) is the impossible sign of an unsigned upfront, not a price.
+    const ok = (x) => x >= 0.001 && x < 1;
     for (const u of fromUpfront) {
       let s = null;
-      if (ref !== null) { s = Math.abs(u.hi - ref) <= Math.abs(u.lo - ref) ? u.hi : u.lo; resolvedByRef += 1; }
-      else if (u.pct >= 0.02) s = u.hi; // without a reference, only take clearly one-sided upfronts
-      if (s !== null && s > 0 && s < 1) vals.push(s);
+      const feasible = [u.hi, u.lo].filter(ok);
+      if (ref !== null && feasible.length) { s = feasible.reduce((a, b) => (Math.abs(b - ref) < Math.abs(a - ref) ? b : a)); resolvedByRef += 1; }
+      else if (ref === null && u.pct >= 0.02 && ok(u.hi)) s = u.hi; // without a reference, only take clearly one-sided upfronts
+      if (s !== null) vals.push(s);
     }
     [...quoted, ...fromUpfront].forEach((x) => { if (!last || x.exec > last) last = x.exec; });
     out[e.id] = vals.length ? { bp: Math.round(median(vals) * 10000), trades: vals.length, quoted: quoted.length, last_trade: new Date(last).toISOString() } : null;
