@@ -172,7 +172,9 @@ function levelsForDay(rawRows, fileDate, prev) {
       const stepIn = exec + DAY_MS, T = (exp - stepIn) / (365.25 * DAY_MS);
       const accr = (stepIn - lastIMM(exec)) / (360 * DAY_MS);
       const N = Number(String(r['Notional amount-Leg 1']).replace(/[,+]/g, ''));
-      const amt = Number(r['Other payment amount']);
+      // A blank upfront is missing, not zero: Number('') is 0, which would price the trade at its coupon.
+      const amtRaw = String(r['Other payment amount'] || '').trim();
+      const amt = amtRaw === '' ? NaN : Number(amtRaw.replace(/[,+]/g, ''));
       const pct = N > 0 && Number.isFinite(amt) ? amt / N : null;
       if (r['Spread-Leg 1']) {
         const q = Number(r['Spread-Leg 1']);
