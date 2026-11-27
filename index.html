@@ -1962,7 +1962,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var host = $('lv-spark'); host.replaceChildren();
     var W = Math.max(280, host.clientWidth || 600), H = 74, m = { l: 4, r: 112, t: 10, b: 18 };
     var x = d3.scalePoint().domain(pts.map(function (p) { return p.date; })).range([m.l, W - m.r]);
-    var REF = pts.ref || { G: IDX.G };
+    var REF = pts.ref || pts[0];
     var vals = pts.map(function (p) { return p.G; }).concat([REF.G]);
     var lo = d3.min(vals), hi = d3.max(vals), pad = Math.max(0.6, (hi - lo) * 0.15);
     var y = d3.scaleLinear().domain([lo - pad, hi + pad]).range([H - m.b, m.t]);
@@ -1971,7 +1971,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     svg.append('line').attr('x1', m.l).attr('x2', W - m.r + 8).attr('y1', y(REF.G)).attr('y2', y(REF.G))
       .attr('stroke', C.dim).attr('stroke-dasharray', '3 4').attr('stroke-width', 1);
     svg.append('text').attr('x', W - m.r + 14).attr('y', y(REF.G) + 4).attr('fill', C.muted).attr('font-size', 11.5)
-      .text(fmtShort(ED.as_of) + ' ' + signed1(REF.G));
+      .text('a week ago ' + signed1(REF.G));
     svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', C.orange).attr('stroke-width', 2)
       .attr('d', d3.line().x(function (p) { return x(p.date); }).y(function (p) { return y(p.G); }));
     pts.forEach(function (p, i) {
@@ -2003,7 +2003,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var pts = Object.keys(dates).sort().filter(function (d) { return at(o, d); }).map(calc);
     if (!pts.length) return;
     var L = pts[pts.length - 1], P = pts.length > 1 ? pts[pts.length - 2] : null, prev = LIVEIDX;
-    pts.ref = at(o, ED.as_of) ? calc(ED.as_of) : null;
+    pts.ref = pts.filter(function (p) { return (new Date(L.date) - new Date(p.date)) / DAY >= 6; }).pop() || null;  // a week earlier
     LIVEIDX = L; LIVEIDX.pts = pts;
     var dead = IDX.dead;
     L.state = L.G >= dead ? 'Stress sits in the debt' : L.G <= -dead ? 'Stress sits in the GPUs' : 'Aligned';
@@ -2013,26 +2013,25 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var lastT = [o.last_trade, c && c.last_trade].filter(Boolean).sort().pop();
     var today = new Date().toISOString().slice(0, 10), when = $('lv-when'); when.replaceChildren();
     when.append(d3.utcFormat('%a %-d %b')(new Date()));
-    if (lastT) when.appendChild(el('span', 'hide-sm', ' · last trade ' + (lastT.slice(0, 10) === today ? d3.utcFormat('%H:%M UTC')(new Date(lastT)) : d3.utcFormat('%-d %b, %H:%M UTC')(new Date(lastT)))));
-    // The 24 Nov close on the method the live number uses, so '+0.3 since 24 Nov' reads true; the published v0.1 close beside it.
+    // one line under it: where the number comes from and how fresh it is
     var wkw = $('wk-close-w'); wkw.replaceChildren();
-    if (pts.ref) {
-      wkw.append(fmtShort(ED.as_of) + ' on v0.2 '); wkw.appendChild(el('b', null, signed1(pts.ref.G)));
-      wkw.appendChild(el('span', null, ' · published close ' + signed1(IDX.G) + ' on v0.1'));
-    } else { wkw.append('Weekly close '); wkw.appendChild(el('b', null, signed1(IDX.G) + ' (v0.1)')); }
-    wkw.appendChild(el('span', 'hide-sm', ' · ')); wkw.hidden = false; document.body.classList.add('is-live');
+    if (lastT) {
+      wkw.append('Priced from DTCC trades · last ');
+      wkw.appendChild(el('b', null, lastT.slice(0, 10) === today ? 'today ' + d3.utcFormat('%H:%M UTC')(new Date(lastT)) : d3.utcFormat('%a %-d %b, %H:%M UTC')(new Date(lastT))));
+    } else wkw.append('Priced from DTCC trades');
+    wkw.hidden = false; document.body.classList.add('is-live');
 
     // the number
     var gn = $('gap-num'), txt = signed1(L.G);
     if (prev && gn.textContent !== txt) { gn.classList.remove('fl-up', 'fl-dn'); void gn.offsetWidth; gn.classList.add(L.G > prev.G ? 'fl-dn' : 'fl-up'); }
-    gn.textContent = txt; $('gap-lbl').textContent = 'STRESS GAP · LIVE · v0.2';
+    gn.textContent = txt; $('gap-lbl').textContent = 'STRESS GAP · LIVE';
     var st = $('gap-state');
     st.textContent = L.state === 'Stress sits in the debt' ? 'The stress sits in the debt' : L.state === 'Stress sits in the GPUs' ? 'The stress sits in the GPUs' : L.state;
     st.style.color = L.state === 'Aligned' ? C.fg2 : L.state === 'Stress sits in the GPUs' ? C.green : C.orange;
     var chg = $('lv-chg'); chg.replaceChildren(); chg.hidden = false;
     var arrow = function (d) { var s = el('span', null, (d >= 0.05 ? '▲ ' : d <= -0.05 ? '▼ ' : '● ') + Math.abs(d).toFixed(1)); s.style.color = d >= 0.05 ? C.orange : d <= -0.05 ? C.green : C.fg2; return s; };
-    if (pts.ref) { chg.appendChild(arrow(L.G - pts.ref.G)); chg.appendChild(el('small', null, ' since ' + fmtShort(ED.as_of))); }
-    if (P) { chg.append('  '); chg.appendChild(arrow(L.G - P.G)); chg.appendChild(el('small', null, ' on ' + (L.intraday ? 'the day' : fmtShort(L.date)))); }
+    if (P) { chg.appendChild(arrow(L.G - P.G)); chg.appendChild(el('small', null, ' on ' + (L.intraday ? 'the day' : d3.utcFormat('%a %-d %b')(new Date(L.date + 'T00:00:00Z'))))); }
+    if (pts.ref) { chg.append('  '); chg.appendChild(arrow(L.G - pts.ref.G)); chg.appendChild(el('small', null, ' on the week')); }
 
     // meters, one decimal while live
     var meter = function (k, v) {
@@ -2046,20 +2045,14 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     $('lv-strip').hidden = false;
     $('lv-range').textContent = fmtShort(pts[0].date) + ' to ' + (L.intraday ? 'today' : fmtShort(L.date)) + ' · from DTCC trades';
     drawLiveSpark(pts);
-    var why = $('lv-why'); why.replaceChildren(); var f0 = d3.format(',.0f'), n = fin.length;
-    var f2 = input('F2'), f2s = scores.find(function (r) { return r.id === 'F2'; }), f1s = scores.find(function (r) { return r.id === 'F1'; });
-    if (L.o) {
-      why.append('Oracle 5Y CDS ');
-      why.appendChild(el('b', null, f0(Number(f2.raw)) + ' → ' + f0(L.o.bp) + ' bp'));
-      why.append(' since the ' + fmtShort(ED.as_of) + ' edition (' + signed1((sc('F2', L.o.bp) - f2s.score_open) / n) + ' on the gap). ');
-    }
+    var why = $('lv-why'); why.replaceChildren(); var f0 = d3.format(',.0f');
+    if (L.o) { why.append('Oracle 5Y CDS '); why.appendChild(el('b', null, f0(L.o.bp) + ' bp')); why.append('. '); }
     if (L.c) {
-      var c1 = sc('F1', L.c.bp);
-      why.append('CoreWeave 5Y CDS (priced from upfront payments) ');
-      why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
-      why.append(c1 > 100 ? ' is ' + f0(L.c.bp - Number(input('F1').distress)) + ' bp past the distress line and scores ' + c1.toFixed(1) + '. ' : ' scores ' + c1.toFixed(1) + '. ');
+      var c1 = sc('F1', L.c.bp), dis1 = Number(input('F1').distress);
+      why.append('CoreWeave 5Y CDS '); why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
+      why.append(L.c.bp > dis1 ? ', ' + f0(L.c.bp - dis1) + ' bp past its distress line (priced from upfront payments). ' : ' (priced from upfront payments). ');
     }
-    why.append('Method v0.2 since 27 Nov: scores no longer stop at 100 at the distress line, so the index keeps reacting past it. On v0.1 today\u2019s gap would read ' + signed1(L.G1) + '. Only the two CDS inputs re-price daily; loans and GPU rents hold at the ' + fmtShort(ED.as_of) + ' edition until the next one.');
+    why.append('These two re-price with every trade; loans and GPU rents update with the weekly reading. A score is 100 at an input\u2019s distress line and keeps rising past it.');
   };
   (function () {
     var load = function () { getLive('/api/cds', function (j) { renderCds(j); markCheck('cds', 300000, 'CDS LEVELS CHECKED'); }); };

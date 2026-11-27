@@ -82,7 +82,7 @@ function card(I, live) {
         h('div', mono(18, LV ? C.green : C.muted, LV ? 600 : 400, { letterSpacing: 2 }), LV ? 'STRESS GAP · LIVE · ' + longDate(LV.date) : 'STRESS GAP · WEEKLY · ' + longDate(I.asOf)),
         h('div', { fontFamily: 'Inter', fontWeight: 800, fontSize: LV ? 172 : 190, lineHeight: 1, letterSpacing: LV ? -8 : -9, color: C.fg, marginTop: 4 }, LV ? LV.gapText : I.gapText),
         h('div', { fontFamily: 'Inter', fontWeight: 700, fontSize: 40, letterSpacing: -1, color: stateCol, marginTop: 6 }, LV ? LV.state : I.state),
-        LV ? h('div', mono(17, C.muted, 400, { marginTop: 12, letterSpacing: 1 }), 'METHOD v0.2 · NO CEILING · ON v0.1 ' + LV.v01Text) : null),
+        LV ? h('div', mono(17, C.muted, 400, { marginTop: 12, letterSpacing: 1 }), 'PRICED FROM DTCC CDS TRADES') : null),
       h('div', { width: 518, flexDirection: 'column', justifyContent: 'center', paddingLeft: 47, borderLeft: '1px solid ' + C.line },
         sideBlock('FINANCING STRESS · DEBT', LV ? LV.F : I.F, LV ? LV.Fb : I.Fb),
         h('div', { height: 34 }),
