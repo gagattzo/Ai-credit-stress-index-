@@ -2014,7 +2014,13 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var today = new Date().toISOString().slice(0, 10), when = $('lv-when'); when.replaceChildren();
     when.append(d3.utcFormat('%a %-d %b')(new Date()));
     if (lastT) when.appendChild(el('span', 'hide-sm', ' · last trade ' + (lastT.slice(0, 10) === today ? d3.utcFormat('%H:%M UTC')(new Date(lastT)) : d3.utcFormat('%-d %b, %H:%M UTC')(new Date(lastT)))));
-    $('wk-close').textContent = signed1(IDX.G) + ' · ' + fmtShort(ED.as_of) + ' (v0.1)'; $('wk-close-w').hidden = false; document.body.classList.add('is-live');
+    // The 24 Nov close on the method the live number uses, so '+0.3 since 24 Nov' reads true; the published v0.1 close beside it.
+    var wkw = $('wk-close-w'); wkw.replaceChildren();
+    if (pts.ref) {
+      wkw.append(fmtShort(ED.as_of) + ' on v0.2 '); wkw.appendChild(el('b', null, signed1(pts.ref.G)));
+      wkw.appendChild(el('span', null, ' · published close ' + signed1(IDX.G) + ' on v0.1'));
+    } else { wkw.append('Weekly close '); wkw.appendChild(el('b', null, signed1(IDX.G) + ' (v0.1)')); }
+    wkw.appendChild(el('span', 'hide-sm', ' · ')); wkw.hidden = false; document.body.classList.add('is-live');
 
     // the number
     var gn = $('gap-num'), txt = signed1(L.G);
