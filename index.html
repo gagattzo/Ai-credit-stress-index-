@@ -727,6 +727,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
         <ol class="unk">
           <li><div><b>It tracks the stressed edge of AI credit.</b>The debt side covers the borrowers where AI credit stress shows first: CoreWeave, Oracle and the data-center campuses Oracle leases. Hyperscaler corporate debt (Microsoft, Alphabet, Amazon, Meta) is out of scope.</div></li>
           <li><div><b>Default protection also prices hedging.</b>Oracle CDS is widely bought as a hedge against an AI downturn, so it carries hedging demand as well as default risk.</div></li>
+          <li><div><b>A rating from the swap is a price, not a forecast.</b>Next to each CDS level is the rating the swap market is pricing: the rating whose median 5-year CDS sits closest, on the grid Groundbreaker published in <a href="https://www.groundbrkr.com/p/mark-to-swap-how-the-market-is-mispricing" target="_blank" rel="noopener">Mark to Swap</a> (after Moody's Market Implied Ratings), set against S&amp;P's rating. The gap says the swap market and the agency disagree; it does not say when or whether a default comes. The grid ends at CCC-, so wider levels read "CCC- or lower".</div></li>
           <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
           <li><div><b>The main judgment calls are tested.</b>Anchors are frozen in method v0.1 and change only with a new method version. The sensitivity table re-runs the gap with each call changed: the 80% utilization behind the GPU anchors, the choice of GPU index, and the two inputs at their limits (CoreWeave past the distress line, Blackwell rents rising).</div></li>
           <li><div><b>Live means the CDS inputs.</b>ACSI Live re-prices Oracle and CoreWeave 5-year CDS with every trade DTCC publishes. CoreWeave CDS trades on upfront terms only, so its spread is computed from the upfront with the standard model (flat hazard, 40% recovery). Loans and GPU rents move with each weekly edition.</div></li>
@@ -1580,6 +1581,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
           var yr = new Date(+asOf - 365 * DAY), old = seriesPts('orcl').filter(function (q) { return Math.abs(q.t - yr) <= 45 * DAY; }).sort(function (a, b) { return Math.abs(a.t - yr) - Math.abs(b.t - yr); })[0];
           if (old) hint = 'Was ' + (old.value / 100).toFixed(2) + '% a year ago';
         }
+        var rt = swapRating(cds, k[0], e.latest.bp);
+        if (rt && rt.agency) hint = 'Priced like ' + rt.implied + ', rated ' + rt.agency + ' · ' + hint.charAt(0).toLowerCase() + hint.slice(1);
         setT(k[1], (e.latest.bp / 100).toFixed(k[2]) + '%', e.latest.bp, e.latest.bp >= 1000 ? C.red : e.latest.bp >= 250 ? C.amber : C.fg,
           dd === null ? '' : arrow(dd) + Math.abs(dd).toFixed(k[2]) + ' pts vs ' + fmtShort(pv.date), dd > 0 ? C.red : C.green, hint);
       });
@@ -1899,6 +1902,17 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     fetch(path, ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) { LIVE.snapshot = false; cb(j); } else fallback(); }).catch(fallback);
   };
 
+  // Swap-implied rating from the grid /api/cds returns (Groundbreaker's, after Moody's Market Implied Ratings):
+  // the rating whose median 5-year CDS is closest on a log scale, next to S&P's rating.
+  function swapRating(j, id, bp) {
+    var g = j && j.rating_grid, a = g && g.anchors_bp;
+    if (!a || !a.length || !(bp > 0)) return null;
+    var i = 0; while (i < a.length - 1 && bp > Math.sqrt(a[i][1] * a[i + 1][1])) i += 1;
+    var ag = (g.agency || []).filter(function (x) { return x.id === id; })[0];
+    var ix = function (s) { for (var k = 0; k < a.length; k += 1) if (a[k][0] === s) return k; return -1; };
+    return { implied: a[i][0] + (bp > a[a.length - 1][1] ? ' or lower' : ''), agency: ag ? ag.rating : null, by: ag ? ag.by : null, notches: ag && ix(ag.rating) >= 0 ? i - ix(ag.rating) : null };
+  }
+
   // DTCC public swap tape: daily 5-year CDS levels
   var CDSD = null;
   var miniSpark = function (host, pts, color) {
@@ -1931,7 +1945,12 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       var v = el('span', 'lv-bp', f0(e.latest.bp) + ' bp'); v.style.color = e.latest.bp >= 1000 ? C.red : e.latest.bp >= 250 ? C.amber : C.fg2; r.appendChild(v);
       var mini = el('div', 'mini'); mini.id = 'mini-' + e.id; r.appendChild(mini);
       var prev = e.series.length > 1 ? e.series[e.series.length - 2] : null;
-      var meta = el('span', 'meta', (e.latest.intraday ? 'TODAY' : fmtShort(e.latest.date).toUpperCase()) + ' · ' + e.latest.trades + (e.latest.trades === 1 ? ' TRADE' : ' TRADES') + (prev ? ' · ' + (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) + ' VS ' + fmtShort(prev.date).toUpperCase() : ''));
+      var rt = swapRating(j, e.id, e.latest.bp), meta = el('span', 'meta');
+      if (rt && rt.agency) {
+        var rl = el('span', 'rt', 'PRICED LIKE ' + rt.implied.toUpperCase() + ' · ' + rt.by + ' ' + rt.agency + (rt.notches > 0 ? ' · ' + (/lower/.test(rt.implied) ? 'AT LEAST ' : '') + rt.notches + (rt.notches === 1 ? ' NOTCH' : ' NOTCHES') + ' BELOW' : ''));
+        rl.style.color = rt.notches >= 4 ? C.amber : C.fg2; meta.appendChild(rl); meta.appendChild(el('br'));
+      }
+      meta.append((e.latest.intraday ? 'TODAY' : fmtShort(e.latest.date).toUpperCase()) + ' · ' + e.latest.trades + (e.latest.trades === 1 ? ' TRADE' : ' TRADES') + (prev ? ' · ' + (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + f0(Math.abs(e.latest.bp - prev.bp)) + ' VS ' + fmtShort(prev.date).toUpperCase() : ''));
       if (e.last_trade) { meta.appendChild(el('br')); meta.append('LAST TRADE ' + d3.utcFormat('%H:%M UTC')(new Date(e.last_trade)) + ' · '); var ag = el('span'); ag.setAttribute('data-ago', e.last_trade); meta.appendChild(ag); }
       r.appendChild(meta); host.appendChild(r);
       if (e.id === 'ORCL' || e.id === 'CRWV') LIVE.cdsTick = (LIVE.cdsTick || []).filter(function (t) { return t.id !== e.id; }).concat([{ id: e.id, s: e.id === 'ORCL' ? 'Insure Oracle debt' : 'Insure CoreWeave debt', v: (e.latest.bp / 100).toFixed(e.id === 'ORCL' ? 2 : 1) + '%/yr', c: prev ? (e.latest.bp >= prev.bp ? '▲ ' : '▼ ') + (Math.abs(e.latest.bp - prev.bp) / 100).toFixed(e.id === 'ORCL' ? 2 : 1) : null, cc: prev && e.latest.bp >= prev.bp ? C.red : C.green, n: e.latest.intraday ? 'today' : fmtShort(e.latest.date) }]);
@@ -1941,6 +1960,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var same = orcl && orcl.series.filter(function (s) { return s.date === f2.obs_date; })[0];
     note.append('Daily median of new on-the-run 5-year trades reported to DTCC under the SEC\u2019s swap rules (cancelled trades removed, corrections applied; DTCC is one of two repositories, so some trades are missing). Quoted spreads are used as reported; upfront prices are converted with a simplified ISDA-style model (flat hazard, 40% recovery). ');
     if (j.calibration) note.append('Model check on ' + fmtShort(j.calibration.date) + ': ' + j.calibration.n + ' trades reported both a quote and an upfront, and the model reproduces the quote with a median error of ' + j.calibration.median_abs_error_bp + ' bp. ');
+    if (j.rating_grid) note.append('"Priced like" is the rating whose median 5-year CDS sits closest on Groundbreaker’s grid (after Moody’s Market Implied Ratings), next to S&P’s rating. ');
     note.append('Days with few trades are noisy. ');
     if (j.intraday && j.intraday.length) note.append('Today\u2019s levels use the trades DTCC has published so far, a few minutes behind execution; dealers may report up to 24 hours late, and a name with no 5-year trade today keeps its last day. ');
     if (/DTCC/.test(f2.source)) note.append('The index\u2019s Oracle input comes from this tape: ' + f2.raw + ' bp on ' + fmtShort(f2.obs_date) + '. ');
@@ -2046,11 +2066,16 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     $('lv-range').textContent = fmtShort(pts[0].date) + ' to ' + (L.intraday ? 'today' : fmtShort(L.date)) + ' · from DTCC trades';
     drawLiveSpark(pts);
     var why = $('lv-why'); why.replaceChildren(); var f0 = d3.format(',.0f');
-    if (L.o) { why.append('Oracle 5Y CDS '); why.appendChild(el('b', null, f0(L.o.bp) + ' bp')); why.append('. '); }
+    var rated = function (id, bp) {
+      var rt = swapRating(j, id, bp); if (!rt || !rt.agency) return;
+      why.append(': the swap prices it like '); why.appendChild(el('b', null, rt.implied)); why.append(', ' + rt.by + ' rates it ' + rt.agency);
+    };
+    if (L.o) { why.append('Oracle 5Y CDS '); why.appendChild(el('b', null, f0(L.o.bp) + ' bp')); rated('ORCL', L.o.bp); why.append('. '); }
     if (L.c) {
       var c1 = sc('F1', L.c.bp), dis1 = Number(input('F1').distress);
       why.append('CoreWeave 5Y CDS '); why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
-      why.append(L.c.bp > dis1 ? ', ' + f0(L.c.bp - dis1) + ' bp past its distress line (priced from upfront payments). ' : ' (priced from upfront payments). ');
+      why.append(L.c.bp > dis1 ? ', ' + f0(L.c.bp - dis1) + ' bp past its distress line (priced from upfront payments)' : ' (priced from upfront payments)');
+      rated('CRWV', L.c.bp); why.append('. ');
     }
     why.append('These two re-price with every trade; loans and GPU rents update with the weekly reading. A score is 100 at an input\u2019s distress line and keeps rising past it.');
   };

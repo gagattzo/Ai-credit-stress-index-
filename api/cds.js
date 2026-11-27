@@ -20,6 +20,33 @@ const ENTITIES = [
   { id: 'META', name: 'Meta', match: 'META PLATFORMS', red: 'UZEAAG' },
 ];
 
+// Swap-implied rating: the rating whose median senior 5-year CDS sits closest on a log scale (boundaries at the
+// geometric mean of neighbouring medians). Grid as published by Groundbreaker, "Mark to Swap" (20 Nov 2026), after
+// Moody's Market Implied Ratings, in S&P symbols. It says what credit quality the swap prices; it is not a forecast.
+const RATING_GRID = [
+  ['AAA', 20], ['AA+', 26], ['AA', 34], ['AA-', 41], ['A+', 49], ['A', 58], ['A-', 68], ['BBB+', 81], ['BBB', 95],
+  ['BBB-', 120], ['BB+', 151], ['BB', 190], ['BB-', 237], ['B+', 296], ['B', 370], ['B-', 488], ['CCC+', 644],
+  ['CCC', 850], ['CCC-', 980],
+];
+// S&P issuer ratings (Oracle cut from BBB on 9 Jul 2026).
+const AGENCY = { ORCL: 'BBB-', CRWV: 'B+', META: 'AA-' };
+
+function impliedRating(bp) {
+  if (!(bp > 0)) return null;
+  let i = 0;
+  while (i < RATING_GRID.length - 1 && bp > Math.sqrt(RATING_GRID[i][1] * RATING_GRID[i + 1][1])) i += 1;
+  return { rating: RATING_GRID[i][0], below_grid: bp > RATING_GRID[RATING_GRID.length - 1][1] };
+}
+
+function ratingFor(id, bp) {
+  const imp = impliedRating(bp);
+  const agency = AGENCY[id] || null;
+  if (!imp) return null;
+  const ix = (s) => RATING_GRID.findIndex((r) => r[0] === s);
+  const notches = agency ? ix(imp.rating) - ix(agency) : null;
+  return { implied: imp.rating, implied_below_grid: imp.below_grid, agency, agency_by: agency ? 'S&P' : null, notches_below_agency: notches };
+}
+
 async function getBuffer(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -274,7 +301,7 @@ module.exports = async (req, res) => {
     const series = got.filter((f) => f.levels[e.id]).map((f) => Object.assign({ date: f.date, bp: f.levels[e.id].bp, trades: f.levels[e.id].trades, kind: f.levels[e.id].kind }, f.intraday ? { intraday: true } : {}));
     const latest = series[series.length - 1] || null;
     const lastFile = got.filter((f) => f.levels[e.id]).pop();
-    return { id: e.id, name: e.name, red: e.red, tenor: '5Y', latest, last_trade: lastFile ? lastFile.levels[e.id].last_trade : null, series };
+    return { id: e.id, name: e.name, red: e.red, tenor: '5Y', latest, rating: latest ? ratingFor(e.id, latest.bp) : null, last_trade: lastFile ? lastFile.levels[e.id].last_trade : null, series };
   });
   res.setHeader('content-type', 'application/json; charset=utf-8');
   const anyIntraday = got.some((f) => f.intraday);
@@ -288,10 +315,17 @@ module.exports = async (req, res) => {
     intraday: got.filter((f) => f.intraday).map((f) => ({ date: f.date, files: f.slices })),
     calibration: (() => { const full = got.filter((f) => !f.intraday && f.levels._calibration); const f = full[full.length - 1]; return f ? Object.assign({ date: f.date }, f.levels._calibration) : null; })(),
     entities,
-    method: 'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront (UFRO) payments converted with a flat-hazard model (40% recovery, 4.5% rate); coupons written in percent normalised. kind says what a level rests on: quoted, upfront_implied (a model) or mixed. CoreWeave has no quoted 5-year spread, so every CoreWeave level is upfront_implied. Days marked intraday use the trades published so far that day. Cleaning rules and tests: github.com/gagattzo/acsi-lab.',
+    rating_grid: {
+      anchors_bp: RATING_GRID,
+      agency: Object.keys(AGENCY).map((id) => ({ id, rating: AGENCY[id], by: 'S&P' })),
+      rule: 'The swap-implied rating is the grid rating whose median 5-year CDS is closest on a log scale; boundaries at the geometric mean of neighbouring medians. The grid ends at CCC-: wider levels read CCC- or lower.',
+      source: 'Groundbreaker, "Mark to Swap: How the Market is Mispricing the AI Boom" (20 Nov 2026), after Moody’s Market Implied Ratings',
+      source_url: 'https://www.groundbrkr.com/p/mark-to-swap-how-the-market-is-mispricing',
+    },
+    method:'Median of the day’s new 5-year trades; quoted spreads used as reported, upfront (UFRO) payments converted with a flat-hazard model (40% recovery, 4.5% rate); coupons written in percent normalised. kind says what a level rests on: quoted, upfront_implied (a model) or mixed. CoreWeave has no quoted 5-year spread, so every CoreWeave level is upfront_implied. Days marked intraday use the trades published so far that day. Cleaning rules and tests: github.com/gagattzo/acsi-lab.',
   }));
 };
 
 // Shared with /api/tape (not a route).
 module.exports.model = { spreadFromUpfront, lastIMM, onTheRun5Y };
-module.exports._test = { levelsForDay, parseCSV, unzipFirst };
+module.exports._test = { levelsForDay, parseCSV, unzipFirst, impliedRating, ratingFor };
