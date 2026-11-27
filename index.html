@@ -2068,7 +2068,8 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var why = $('lv-why'); why.replaceChildren(); var f0 = d3.format(',.0f');
     var rated = function (id, bp) {
       var rt = swapRating(j, id, bp); if (!rt || !rt.agency) return;
-      why.append(': the swap prices it like '); why.appendChild(el('b', null, rt.implied)); why.append(', ' + rt.by + ' rates it ' + rt.agency);
+      var low = / or lower$/.test(rt.implied);
+      why.append(': the swap prices it like '); why.appendChild(el('b', null, rt.implied.replace(/ or lower$/, ''))); why.append((low ? ' or lower' : '') + ', ' + rt.by + ' rates it ' + rt.agency);
     };
     if (L.o) { why.append('Oracle 5Y CDS '); why.appendChild(el('b', null, f0(L.o.bp) + ' bp')); rated('ORCL', L.o.bp); why.append('. '); }
     if (L.c) {
