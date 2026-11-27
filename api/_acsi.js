@@ -1,5 +1,6 @@
 // Shared helpers for the share card and share pages (files starting with "_" are not routes).
-// The index arithmetic mirrors index.html exactly (method v0.1).
+// The index arithmetic mirrors index.html exactly. The weekly edition of 24 Nov 2026 is method v0.1 (scores stop at
+// 100 at the distress line); the live index is method v0.2 from 27 Nov 2026 (no ceiling, floor still 0).
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -34,8 +35,9 @@ function computeIndex(D) {
     const calm = Number(r.calm), distress = Number(r.distress);
     const age = obs ? Math.round((asOf - new Date(obs + 'T00:00:00Z')) / DAY) : null;
     const excluded = raw === null || age === null || age > Number(r.window_days);
-    const s = raw === null ? null : Math.max(0, Math.min(100, (100 * (raw - calm)) / (distress - calm)));
-    return { id: r.id, side: r.side, score: s, excluded };
+    const open = raw === null ? null : Math.max(0, (100 * (raw - calm)) / (distress - calm));
+    const s = open === null ? null : Math.min(100, open);
+    return { id: r.id, side: r.side, score: s, open, excluded };
   });
   const live = (side) => scores.filter((r) => r.side === side && !r.excluded);
   const mean = (a) => a.reduce((t, r) => t + r.score, 0) / a.length;
@@ -55,20 +57,28 @@ function computeIndex(D) {
   };
 }
 
-// ACSI Live, as on the page: the same method re-priced with the latest DTCC 5Y CDS levels.
-// F2 takes Oracle's; F1 takes CoreWeave's as a live proxy for the bond spread (same anchors).
-// Loans and GPU rents hold at the edition. Returns null when there is nothing to re-price.
+// ACSI Live, as on the page: method v0.2, re-priced with the latest DTCC 5Y CDS levels. F2 takes Oracle's; F1 takes
+// CoreWeave's. No ceiling: past the distress line a score keeps rising. Loans and GPU rents hold at the edition.
+// Also returns the same day on v0.1 (capped at 100) and v0.2 on the edition date, so changes compare like with like.
+// Returns null when there is nothing to re-price.
 function liveIndex(I, cds) {
   if (!cds || !Array.isArray(cds.entities) || I.A === null || !I.fin || I.fin.length < 2) return null;
   const ent = (id) => cds.entities.find((e) => e.id === id && e.latest);
   const o = ent('ORCL'), c = ent('CRWV');
   if (!o) return null;
-  const sc = (id, raw) => { const r = I.inputs.find((x) => x.id === id); const calm = Number(r.calm), dis = Number(r.distress); return Math.max(0, Math.min(100, (100 * (raw - calm)) / (dis - calm))); };
-  const s = I.fin.map((r) => (r.id === 'F1' && c ? sc('F1', c.latest.bp) : r.id === 'F2' ? sc('F2', o.latest.bp) : r.score));
-  const F = s.reduce((t, v) => t + v, 0) / s.length, G = F - I.A;
+  const sc = (id, raw, cap) => { const r = I.inputs.find((x) => x.id === id); const calm = Number(r.calm), dis = Number(r.distress); const v = Math.max(0, (100 * (raw - calm)) / (dis - calm)); return cap ? Math.min(100, v) : v; };
+  const at = (e, d) => { let v = null; if (e && e.series) e.series.forEach((p) => { if (p.date <= d) v = p; }); return v; };
+  const calc = (po, pc, cap) => {
+    const s = I.fin.map((r) => (r.id === 'F1' && pc ? sc('F1', pc.bp, cap) : r.id === 'F2' && po ? sc('F2', po.bp, cap) : cap ? r.score : r.open));
+    const F = s.reduce((t, v) => t + v, 0) / s.length; return { F, G: F - I.A };
+  };
+  const now = calc(o.latest, c && c.latest, false), v01 = calc(o.latest, c && c.latest, true);
+  const ref = calc(at(o, I.asOf), at(c, I.asOf), false);
   const one = (v) => (v >= 0.05 ? '+' : v <= -0.05 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+  const G = now.G, F = now.F;
   const state = G >= I.dead ? 'Stress sits in the debt' : G <= -I.dead ? 'Stress sits in the GPUs' : 'Aligned';
-  return { F, A: I.A, G, gapText: one(G), closeText: one(I.G), Fb: band(F), state, date: [o.latest.date, c && c.latest.date].filter(Boolean).sort().pop() };
+  return { method: 'v0.2', F, A: I.A, G, gapText: one(G), v01G: v01.G, v01Text: one(v01.G), refG: ref.G, refText: one(ref.G),
+    closeText: one(I.G), Fb: band(F), state, date: [o.latest.date, c && c.latest.date].filter(Boolean).sort().pop() };
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

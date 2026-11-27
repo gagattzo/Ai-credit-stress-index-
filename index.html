@@ -730,6 +730,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
           <li><div><b>Rents are not the loans' collateral.</b>Construction loans are secured on campuses and leases. GPU rents measure what the hardware earns, not what a lender would recover.</div></li>
           <li><div><b>The main judgment calls are tested.</b>Anchors are frozen in method v0.1 and change only with a new method version. The sensitivity table re-runs the gap with each call changed: the 80% utilization behind the GPU anchors, the choice of GPU index, and the two inputs at their limits (CoreWeave past the distress line, Blackwell rents rising).</div></li>
           <li><div><b>Live means the CDS inputs.</b>ACSI Live re-prices Oracle and CoreWeave 5-year CDS with every trade DTCC publishes. CoreWeave CDS trades on upfront terms only, so its spread is computed from the upfront with the standard model (flat hazard, 40% recovery). Loans and GPU rents move with each weekly edition.</div></li>
+          <li><div><b>No ceiling since 27 Nov.</b>Method v0.2: an input scores 0 at its calm level and 100 at its distress line, and keeps rising past it. Under v0.1 it stopped at 100, so CoreWeave, past its line since mid-October, could no longer move the index. The 24 Nov close (+42.6) was v0.1 and stays as published.</div></li>
           <li><div><b>History is reconstructed; the official series is not.</b>The flip chart rebuilds earlier months from dated prints with a subset of inputs. The official weekly series starts on 24 Nov 2026 and is never back-filled.</div></li>
         </ol>
       </div>
@@ -836,10 +837,11 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var status = raw === null || age === null || age > Number(r.window_days) ? 'excluded' : age <= Number(r.fresh_days) ? 'fresh' : 'carried';
     var unclipped = raw === null ? null : (100 * (raw - calm)) / (distress - calm);
     var score = unclipped === null ? null : Math.max(0, Math.min(100, unclipped));
+    var open = unclipped === null ? null : Math.max(0, unclipped);
     var beyond = raw === null ? 0 : distress > calm ? raw - distress : distress - raw;
     return {
       id: r.id, side: r.side, order: Number(r.order), name: r.name, instrument: r.instrument, raw: raw, unit: r.unit, shown: shown,
-      obs_date: obs, age_days: age, status: status, score_exact: score, score_int: score === null ? null : Math.round(score),
+      obs_date: obs, age_days: age, status: status, score_exact: score, score_open: open, score_int: score === null ? null : Math.round(score),
       band: score === null ? null : band(score), beyond_distress: score === 100 ? Math.round(beyond * 10) / 10 : 0,
       grade: r.grade, source: r.source, url: r.url,
     };
@@ -1752,7 +1754,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var shareText = function () {
       var L = LIVEIDX;
       var t = L
-        ? 'AI Credit Stress Index, live ' + d3.utcFormat('%-d %b')(new Date()) + ': debt stress ' + L.F.toFixed(1) + ', GPU stress ' + IDX.A.toFixed(1) + '. Gap ' + signed1(L.G) + ' (weekly close ' + signed1(IDX.G) + '): ' + L.state.toLowerCase() + '.'
+        ? 'AI Credit Stress Index, live ' + d3.utcFormat('%-d %b')(new Date()) + ': debt stress ' + L.F.toFixed(1) + ', GPU stress ' + IDX.A.toFixed(1) + '. Gap ' + signed1(L.G) + ': ' + L.state.toLowerCase() + '.'
         : 'AI Credit Stress Index, ' + fmtShort(ED.as_of) + ' reading: debt ' + IDX.Fb.toLowerCase() + ' at ' + IDX.Fi + ', GPUs ' + IDX.Ab.toLowerCase() + ' at ' + IDX.Ai + '. Gap ' + gapText() + ': ' + IDX.state.toLowerCase() + '.';
       var pm = LIVE.data && LIVE.data.polymarket && LIVE.data.polymarket.markets && LIVE.data.polymarket.markets[0];
       if (pm && !LIVE.snapshot) t += '\n\nLive: Polymarket gives ' + Math.round(pm.yes * 100) + '% odds that CoreWeave announces bankruptcy by end-' + String(pm.deadline).slice(0, 4) + '.';
@@ -1950,25 +1952,26 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     renderPulse();
   };
 
-  // ---------- ACSI Live: the same method v0.1, re-priced with every DTCC trade ----------
-  // Indicative. F2 takes the day's Oracle 5Y CDS; F1 takes CoreWeave 5Y CDS as a live proxy for the bond spread
-  // (same anchors). Loans (F3) and GPU rents (A1, A2) hold at this edition until their next print.
-  // The weekly close stays the official, citeable number.
+  // ---------- ACSI Live: method v0.2 (no ceiling), re-priced with every DTCC trade ----------
+  // F2 takes the day's Oracle 5Y CDS; F1 takes CoreWeave 5Y CDS. A score is 0 at the calm anchor and 100 at the distress
+  // line and keeps rising past it (v0.1 stopped it at 100). Loans (F3) and GPU rents (A1, A2) hold at this edition until
+  // their next print. Changes are measured against v0.2 on the edition date; the 24 Nov close itself is v0.1.
   var LIVEIDX = null;
   var signed1 = function (v) { return (v >= 0.05 ? '+' : v <= -0.05 ? '−' : '') + Math.abs(v).toFixed(1); };
   var drawLiveSpark = function (pts) {
     var host = $('lv-spark'); host.replaceChildren();
     var W = Math.max(280, host.clientWidth || 600), H = 74, m = { l: 4, r: 112, t: 10, b: 18 };
     var x = d3.scalePoint().domain(pts.map(function (p) { return p.date; })).range([m.l, W - m.r]);
-    var vals = pts.map(function (p) { return p.G; }).concat([IDX.G]);
+    var REF = pts.ref || { G: IDX.G };
+    var vals = pts.map(function (p) { return p.G; }).concat([REF.G]);
     var lo = d3.min(vals), hi = d3.max(vals), pad = Math.max(0.6, (hi - lo) * 0.15);
     var y = d3.scaleLinear().domain([lo - pad, hi + pad]).range([H - m.b, m.t]);
     var svg = d3.select(host).append('svg').attr('viewBox', '0 0 ' + W + ' ' + H).attr('role', 'img')
       .attr('aria-label', 'ACSI Live by day, from ' + signed1(pts[0].G) + ' to ' + signed1(pts[pts.length - 1].G));
-    svg.append('line').attr('x1', m.l).attr('x2', W - m.r + 8).attr('y1', y(IDX.G)).attr('y2', y(IDX.G))
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r + 8).attr('y1', y(REF.G)).attr('y2', y(REF.G))
       .attr('stroke', C.dim).attr('stroke-dasharray', '3 4').attr('stroke-width', 1);
-    svg.append('text').attr('x', W - m.r + 14).attr('y', y(IDX.G) + 4).attr('fill', C.muted).attr('font-size', 11.5)
-      .text('weekly close ' + signed1(IDX.G));
+    svg.append('text').attr('x', W - m.r + 14).attr('y', y(REF.G) + 4).attr('fill', C.muted).attr('font-size', 11.5)
+      .text(fmtShort(ED.as_of) + ' ' + signed1(REF.G));
     svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', C.orange).attr('stroke-width', 2)
       .attr('d', d3.line().x(function (p) { return x(p.date); }).y(function (p) { return y(p.G); }));
     pts.forEach(function (p, i) {
@@ -1987,18 +1990,20 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     if (!o || !o.latest || !o.series || !o.series.length || IDX.A === null || IDX.G === null) return;
     var fin = scores.filter(function (r) { return r.side === 'financing' && r.status !== 'excluded'; });
     if (fin.length < 2) return;
-    var sc = function (id, raw) { var r = input(id), calm = Number(r.calm), dis = Number(r.distress); return Math.max(0, Math.min(100, (100 * (raw - calm)) / (dis - calm))); };
+    var sc = function (id, raw, cap) { var r = input(id), calm = Number(r.calm), dis = Number(r.distress), v = Math.max(0, (100 * (raw - calm)) / (dis - calm)); return cap ? Math.min(100, v) : v; };
     var at = function (e, d) { var v = null; if (e && e.series) e.series.forEach(function (s) { if (s.date <= d) v = s; }); return v; };
     var calc = function (d) {
       var po = at(o, d), pc = at(c, d);
-      var s = fin.map(function (r) { return r.id === 'F1' && pc ? sc('F1', pc.bp) : r.id === 'F2' && po ? sc('F2', po.bp) : r.score_exact; });
-      var F = s.reduce(function (t, v) { return t + v; }, 0) / s.length;
-      return { date: d, F: F, G: F - IDX.A, o: po, c: pc, intraday: !!((po && po.intraday) || (pc && pc.intraday)) };
+      var s = fin.map(function (r) { return r.id === 'F1' && pc ? sc('F1', pc.bp) : r.id === 'F2' && po ? sc('F2', po.bp) : r.score_open; });
+      var s1 = fin.map(function (r) { return r.id === 'F1' && pc ? sc('F1', pc.bp, true) : r.id === 'F2' && po ? sc('F2', po.bp, true) : r.score_exact; });
+      var F = s.reduce(function (t, v) { return t + v; }, 0) / s.length, F1v = s1.reduce(function (t, v) { return t + v; }, 0) / s1.length;
+      return { date: d, F: F, G: F - IDX.A, G1: F1v - IDX.A, o: po, c: pc, intraday: !!((po && po.intraday) || (pc && pc.intraday)) };
     };
     var dates = {}; o.series.forEach(function (s) { dates[s.date] = 1; }); if (c && c.series) c.series.forEach(function (s) { dates[s.date] = 1; });
     var pts = Object.keys(dates).sort().filter(function (d) { return at(o, d); }).map(calc);
     if (!pts.length) return;
     var L = pts[pts.length - 1], P = pts.length > 1 ? pts[pts.length - 2] : null, prev = LIVEIDX;
+    pts.ref = at(o, ED.as_of) ? calc(ED.as_of) : null;
     LIVEIDX = L; LIVEIDX.pts = pts;
     var dead = IDX.dead;
     L.state = L.G >= dead ? 'Stress sits in the debt' : L.G <= -dead ? 'Stress sits in the GPUs' : 'Aligned';
@@ -2009,25 +2014,25 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     var today = new Date().toISOString().slice(0, 10), when = $('lv-when'); when.replaceChildren();
     when.append(d3.utcFormat('%a %-d %b')(new Date()));
     if (lastT) when.appendChild(el('span', 'hide-sm', ' · last trade ' + (lastT.slice(0, 10) === today ? d3.utcFormat('%H:%M UTC')(new Date(lastT)) : d3.utcFormat('%-d %b, %H:%M UTC')(new Date(lastT)))));
-    $('wk-close').textContent = signed1(IDX.G) + ' · ' + fmtShort(ED.as_of); $('wk-close-w').hidden = false; document.body.classList.add('is-live');
+    $('wk-close').textContent = signed1(IDX.G) + ' · ' + fmtShort(ED.as_of) + ' (v0.1)'; $('wk-close-w').hidden = false; document.body.classList.add('is-live');
 
     // the number
     var gn = $('gap-num'), txt = signed1(L.G);
     if (prev && gn.textContent !== txt) { gn.classList.remove('fl-up', 'fl-dn'); void gn.offsetWidth; gn.classList.add(L.G > prev.G ? 'fl-dn' : 'fl-up'); }
-    gn.textContent = txt; $('gap-lbl').textContent = 'STRESS GAP · LIVE';
+    gn.textContent = txt; $('gap-lbl').textContent = 'STRESS GAP · LIVE · v0.2';
     var st = $('gap-state');
     st.textContent = L.state === 'Stress sits in the debt' ? 'The stress sits in the debt' : L.state === 'Stress sits in the GPUs' ? 'The stress sits in the GPUs' : L.state;
     st.style.color = L.state === 'Aligned' ? C.fg2 : L.state === 'Stress sits in the GPUs' ? C.green : C.orange;
     var chg = $('lv-chg'); chg.replaceChildren(); chg.hidden = false;
     var arrow = function (d) { var s = el('span', null, (d >= 0.05 ? '▲ ' : d <= -0.05 ? '▼ ' : '● ') + Math.abs(d).toFixed(1)); s.style.color = d >= 0.05 ? C.orange : d <= -0.05 ? C.green : C.fg2; return s; };
-    chg.appendChild(arrow(L.G - IDX.G)); chg.appendChild(el('small', null, ' since the weekly close'));
+    if (pts.ref) { chg.appendChild(arrow(L.G - pts.ref.G)); chg.appendChild(el('small', null, ' since ' + fmtShort(ED.as_of))); }
     if (P) { chg.append('  '); chg.appendChild(arrow(L.G - P.G)); chg.appendChild(el('small', null, ' on ' + (L.intraday ? 'the day' : fmtShort(L.date)))); }
 
     // meters, one decimal while live
     var meter = function (k, v) {
       var b = band(v); $('m-' + k).textContent = v.toFixed(1);
       var e = $('m-' + k + '-b'); e.textContent = b; e.style.color = BAND_C[b] || C.dim;
-      var bar = $('m-' + k + '-bar'); bar.style.background = BAND_C[b] || C.dim; bar.style.width = Math.max(1.5, v) + '%';
+      var bar = $('m-' + k + '-bar'); bar.style.background = BAND_C[b] || C.dim; bar.style.width = Math.min(100, Math.max(1.5, v)) + '%';
     };
     meter('fin', L.F); meter('gpu', IDX.A);
 
@@ -2040,15 +2045,15 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     if (L.o) {
       why.append('Oracle 5Y CDS ');
       why.appendChild(el('b', null, f0(Number(f2.raw)) + ' → ' + f0(L.o.bp) + ' bp'));
-      why.append(' since the weekly close (' + signed1((sc('F2', L.o.bp) - f2s.score_exact) / n) + ' on the gap). ');
+      why.append(' since the ' + fmtShort(ED.as_of) + ' edition (' + signed1((sc('F2', L.o.bp) - f2s.score_open) / n) + ' on the gap). ');
     }
     if (L.c) {
       var c1 = sc('F1', L.c.bp);
       why.append('CoreWeave 5Y CDS (priced from upfront payments) ');
       why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
-      why.append(c1 >= 100 && f1s.score_exact >= 100 ? ' is past the distress line, so it scores the full 100. ' : ' (' + signed1((c1 - f1s.score_exact) / n) + ' on the gap). ');
+      why.append(c1 > 100 ? ' is ' + f0(L.c.bp - Number(input('F1').distress)) + ' bp past the distress line and scores ' + c1.toFixed(1) + '. ' : ' scores ' + c1.toFixed(1) + '. ');
     }
-    why.append('Only the two CDS inputs re-price daily; loans and GPU rents hold at the ' + fmtShort(ED.as_of) + ' edition until the next one. The weekly close is the official number.');
+    why.append('Method v0.2 since 27 Nov: scores no longer stop at 100 at the distress line, so the index keeps reacting past it. On v0.1 today\u2019s gap would read ' + signed1(L.G1) + '. Only the two CDS inputs re-price daily; loans and GPU rents hold at the ' + fmtShort(ED.as_of) + ' edition until the next one.');
   };
   (function () {
     var load = function () { getLive('/api/cds', function (j) { renderCds(j); markCheck('cds', 300000, 'CDS LEVELS CHECKED'); }); };

@@ -11,8 +11,8 @@ module.exports = (req, res) => {
   try {
     const I = computeIndex(loadData());
     if (I.G !== null) {
-      title = 'AI Credit Stress Index: gap ' + I.gapText + ', ' + I.state.toLowerCase();
-      desc = 'Financing stress ' + I.Fi + ' (' + I.Fb + ') vs GPU asset stress ' + I.Ai + ' (' + I.Ab + '), weekly reading to ' + I.asOf + '. ' + desc;
+      title = 'AI Credit Stress Index: ' + I.state.toLowerCase() + ', live';
+      desc = 'The live stress gap between AI-infrastructure debt and GPU rents, re-priced with every DTCC CDS trade (method v0.2). ' + desc;
     }
   } catch (e) { /* keep the generic text */ }
   const page = base + '/s/' + id;
