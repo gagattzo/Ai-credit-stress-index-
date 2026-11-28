@@ -172,6 +172,11 @@ body.adv .advv .sw { grid-template-columns: 62px minmax(0, 1fr) 38px 104px; gap:
 .gapnum { font-family: var(--mono); font-size: clamp(84px, 10vw, 124px); letter-spacing: -.07em; line-height: .9; font-weight: 700; }
 .gapexp { display: flex; flex-direction: column; gap: 3px; max-width: 36ch; }
 .gapexp .lbl { font-size: 12.5px; color: var(--muted); font-weight: 500; letter-spacing: .05em; }
+/* live: no status line on top; the time the number stands at sits next to its label */
+body.is-live .eyebrow-row { display: none; }
+.gapexp .lbl.has-tag { display: flex; align-items: center; justify-content: space-between; gap: 12px; white-space: nowrap; }
+.gtag { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--fg2); }
+.gtag.on { color: var(--green); } .gtag .ldot { width: 7px; height: 7px; }
 .gstate { font-size: 21px; font-weight: 700; } .gdesc { font-size: 14px; color: var(--fg2); }
 .lvchg { font-family: var(--mono); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .lvchg small { font-family: var(--sans, inherit); font-weight: 400; color: var(--muted); font-size: 12.5px; }
@@ -2040,11 +2045,21 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       wkw.appendChild(el('b', null, lastT.slice(0, 10) === today ? 'today ' + d3.utcFormat('%H:%M UTC')(new Date(lastT)) : d3.utcFormat('%a %-d %b, %H:%M UTC')(new Date(lastT))));
     } else wkw.append('Priced from DTCC trades');
     wkw.hidden = false; document.body.classList.add('is-live');
+    // the tag next to the label says when the number stands: LIVE hh:mm on a day with trades, else the last trade day's close
+    var gl = $('gap-lbl'); gl.replaceChildren(); gl.classList.add('has-tag'); gl.appendChild(el('span', null, 'STRESS GAP'));
+    if (lastT) {
+      var lt = new Date(lastT), isLive = lastT.slice(0, 10) === today, old = (new Date() - lt) / DAY > 6;
+      var tag = el('span', 'gtag' + (isLive ? ' on' : ''));
+      tag.appendChild(el('i', isLive ? 'ldot' : 'ldot snap'));
+      tag.append(isLive ? 'LIVE ' + d3.utcFormat('%H:%M UTC')(lt) : d3.utcFormat(old ? '%a %-d %b' : '%a')(lt).toUpperCase() + ' CLOSE');
+      tag.title = 'Last DTCC trade ' + d3.utcFormat('%a %-d %b, %H:%M UTC')(lt);
+      gl.appendChild(tag);
+    }
 
     // the number
     var gn = $('gap-num'), txt = signed1(L.G);
     if (prev && gn.textContent !== txt) { gn.classList.remove('fl-up', 'fl-dn'); void gn.offsetWidth; gn.classList.add(L.G > prev.G ? 'fl-dn' : 'fl-up'); }
-    gn.textContent = txt; $('gap-lbl').textContent = 'STRESS GAP · LIVE';
+    gn.textContent = txt;
     var st = $('gap-state');
     st.textContent = L.state === 'Stress sits in the debt' ? 'The stress sits in the debt' : L.state === 'Stress sits in the GPUs' ? 'The stress sits in the GPUs' : L.state;
     st.style.color = L.state === 'Aligned' ? C.fg2 : L.state === 'Stress sits in the GPUs' ? C.green : C.orange;
