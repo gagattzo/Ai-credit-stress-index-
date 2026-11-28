@@ -187,7 +187,11 @@ body.is-live .eyebrow-row { display: none; }
 @media (max-width: 560px) { body.is-live .nr-w { display: none; } }
 .lvs-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 12.5px; color: var(--muted); letter-spacing: .02em; }
 #lv-spark svg { display: block; width: 100%; overflow: visible; }
-.lvwhy { margin: 0; font-size: 13.5px; color: var(--fg2); line-height: 1.5; } .lvwhy b { font-family: var(--mono); color: var(--fg); font-weight: 600; }
+.lvwhy { margin: 2px 0 0; display: flex; flex-direction: column; }
+.lvr { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lvr-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lvr-n { font-size: 14px; font-weight: 500; color: var(--fg); } .lvr-s { font-size: 12.5px; color: var(--muted); }
+.lvr-v { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--fg); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .meters { display: flex; flex-direction: column; gap: 14px; }
 .meter, .mscale { display: grid; grid-template-columns: 180px minmax(0, 1fr) 150px; gap: 16px; align-items: center; }
 .mlab b { display: block; font-weight: 600; } .mlab small { display: block; font-size: 12px; color: var(--muted); }
@@ -499,7 +503,7 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
       <div class="lvstrip" id="lv-strip" hidden>
         <div class="lvs-head"><span>ACSI Live, day by day</span><span id="lv-range"></span></div>
         <div id="lv-spark"></div>
-        <p class="lvwhy" id="lv-why"></p>
+        <div class="lvwhy" id="lv-why"></div>
       </div>
       <div class="meters">
         <div class="meter"><div class="mlab"><b>Debt stress</b><small title="Called financing stress in the methodology">bonds, loans, insurance</small></div><div class="mbar"><i id="m-fin-bar"></i></div><div class="mval"><b id="m-fin">—</b>/100<em id="m-fin-b"></em></div></div>
@@ -2080,20 +2084,15 @@ td.pos { color: var(--orange); } td.neg { color: var(--green); }
     $('lv-strip').hidden = false;
     $('lv-range').textContent = fmtShort(pts[0].date) + ' to ' + (L.intraday ? 'today' : fmtShort(L.date)) + ' · from DTCC trades';
     drawLiveSpark(pts);
+    // the two inputs that move live, one row each: name, swap-implied rating against S&P's, level
     var why = $('lv-why'); why.replaceChildren(); var f0 = d3.format(',.0f');
-    var rated = function (id, bp) {
-      var rt = swapRating(j, id, bp); if (!rt || !rt.agency) return;
-      var low = / or lower$/.test(rt.implied);
-      why.append(': the swap prices it like '); why.appendChild(el('b', null, rt.implied.replace(/ or lower$/, ''))); why.append((low ? ' or lower' : '') + ', ' + rt.by + ' rates it ' + rt.agency);
-    };
-    if (L.o) { why.append('Oracle 5Y CDS '); why.appendChild(el('b', null, f0(L.o.bp) + ' bp')); rated('ORCL', L.o.bp); why.append('. '); }
-    if (L.c) {
-      var c1 = sc('F1', L.c.bp), dis1 = Number(input('F1').distress);
-      why.append('CoreWeave 5Y CDS '); why.appendChild(el('b', null, f0(L.c.bp) + ' bp'));
-      why.append(L.c.bp > dis1 ? ', ' + f0(L.c.bp - dis1) + ' bp past its distress line (priced from upfront payments)' : ' (priced from upfront payments)');
-      rated('CRWV', L.c.bp); why.append('. ');
-    }
-    why.append('These two re-price with every trade; loans and GPU rents update with the weekly reading. A score is 100 at an input\u2019s distress line and keeps rising past it.');
+    [['Oracle', 'ORCL', L.o], ['CoreWeave', 'CRWV', L.c]].forEach(function (x) {
+      if (!x[2]) return;
+      var rt = swapRating(j, x[1], x[2].bp), r = el('div', 'lvr'), l = el('div', 'lvr-l');
+      l.appendChild(el('span', 'lvr-n', x[0] + ' 5Y CDS'));
+      if (rt && rt.agency) l.appendChild(el('span', 'lvr-s', 'Priced ' + rt.implied + ' · rated ' + rt.agency));
+      r.appendChild(l); r.appendChild(el('b', 'lvr-v', f0(x[2].bp) + ' bp')); why.appendChild(r);
+    });
   };
   (function () {
     var load = function () { getLive('/api/cds', function (j) { renderCds(j); markCheck('cds', 300000, 'CDS LEVELS CHECKED'); }); };
